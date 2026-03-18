@@ -81,8 +81,8 @@ def extract_optimized_quality_dxf(image_path: str, output_path: str) -> bool:
 # --- ROTAS DA API --- (Mantidas as mesmas do seu código original)
 @app.get("/", response_class=HTMLResponse)
 async def read_index():
-    # Certifique-se de que o index.html existe na pasta
-    with open("index.html", "r", encoding="utf-8") as f:
+    # Adicionamos o caminho da pasta worker-engine na frente
+    with open("worker-engine/index.html", "r", encoding="utf-8") as f:
         return f.read()
 
 @app.post("/convert")
