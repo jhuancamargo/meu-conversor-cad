@@ -1,0 +1,23 @@
+# Ambientes Virtuais (Pasta onde ficam as bibliotecas locais)
+venv/
+.venv/
+env/
+__pycache__/
+*.pyc
+
+# Arquivos Temporários de Processamento
+input_*
+output_*
+result_*
+temp_*
+*.bmp
+*.svg
+*.dxf
+
+# Configurações de IDE
+.vscode/
+.idea/
+
+# Arquivos de sistema
+.DS_Store
+Thumbs.db
