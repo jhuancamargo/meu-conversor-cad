@@ -1,0 +1,51 @@
+# Arquivos temporários da API
+output_*.dxf
+input_*.jpg
+input_*.png
+input_*.jpeg
+
+# Python
+__pycache__/
+*.pyc
+.env
+venv/
+.venv/
+
+# Modelos baixados em runtime
+worker-engine/models/
+
+# Debug / intermediários
+worker-engine/debug_*.png
+worker-engine/hed_*.png
+worker-engine/cmp_*.png
+worker-engine/atual_*.png
+worker-engine/foto_simulada.jpg
+worker-engine/worker.py
+worker-engine/vectorizer/
+worker-engine/potrace.exe
+worker-engine/out_*.dxf
+worker-engine/e2e_*.dxf
+worker-engine/real_*.dxf
+worker-engine/m_hed.dxf
+worker-engine/m_otsu.dxf
+
+# DXFs de versões de teste
+evidencias/*_v2.dxf
+evidencias/*_v3.dxf
+evidencias/*_v4.dxf
+evidencias/*_v5.dxf
+evidencias/sofa_*.dxf
+evidencias/arqui_*.dxf
+evidencias/real_*.dxf
+evidencias/cmp_*.png
+
+# PDF confidencial do cliente
+Suite Villa@Barcelona_Utopia_100_Proposed Layout Plan.pdf
+
+# Imagens originais do cliente
+evidencias/teste1.jpeg
+evidencias/teste2.jpeg
+
+# Frontend e backend alternativos
+frontend/
+backend-api/

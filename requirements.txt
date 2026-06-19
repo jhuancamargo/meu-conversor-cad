@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+python-multipart
+opencv-python-headless
+numpy
+ezdxf
+scikit-image
+sknw
+scipy
+# --- IA: deteccao de bordas por deep learning (HED) ---
+torch
+torchvision
+controlnet_aux
+Pillow
