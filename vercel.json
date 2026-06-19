@@ -1,0 +1,14 @@
+{
+  "builds": [
+    {
+      "src": "worker-engine/app.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "worker-engine/app.py"
+    }
+  ]
+}
