@@ -38,6 +38,27 @@
     @keyframes pulse-slide { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
 
     #result { display: none; }
+
+    /* ── Cursor de coração ─────────────────────────────────────────── */
+    /* padrão: coração rosa */
+    body, body * {
+      cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30' viewBox='0 0 32 32'%3E%3Cpath fill='%23f472b6' stroke='%23db2777' stroke-width='1.5' d='M16 28C16 28 3 19 3 10.5C3 6.4 6.4 3 10 3C12.6 3 14.7 4.5 16 6.9C17.3 4.5 19.4 3 22 3C25.6 3 29 6.4 29 10.5C29 19 16 28 16 28Z'/%3E%3C/svg%3E") 15 13, auto;
+    }
+    /* sobre elementos clicáveis: coração vermelho maior */
+    button, a, label, select, summary, [onclick], .drop-zone, .tab-btn,
+    input[type="radio"], input[type="checkbox"] {
+      cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='36' viewBox='0 0 32 32'%3E%3Cpath fill='%23f43f5e' stroke='%23fff' stroke-width='1.5' d='M16 28C16 28 3 19 3 10.5C3 6.4 6.4 3 10 3C12.6 3 14.7 4.5 16 6.9C17.3 4.5 19.4 3 22 3C25.6 3 29 6.4 29 10.5C29 19 16 28 16 28Z'/%3E%3C/svg%3E") 18 16, pointer;
+    }
+    /* coraçõezinhos que sobem ao clicar */
+    .heart-pop {
+      position: fixed; z-index: 9999; pointer-events: none;
+      font-size: 20px; transform: translate(-50%, -50%);
+      animation: heart-float 900ms ease-out forwards;
+    }
+    @keyframes heart-float {
+      0%   { opacity: 1; transform: translate(-50%, -50%) scale(0.5) rotate(0deg); }
+      100% { opacity: 0; transform: translate(-50%, -140px) scale(1.3) rotate(15deg); }
+    }
   </style>
 </head>
 <body class="min-h-screen flex items-center justify-center p-4">
@@ -53,8 +74,27 @@
         </svg>
         <span class="text-white font-bold text-xl tracking-tight">Meu Conversor CAD</span>
       </div>
-      <p class="text-slate-400 text-sm">Imagem → DXF editável · <span class="text-green-400 font-medium">The JenArch</span></p>
+      <p class="text-slate-400 text-sm">The JenArch · <span class="text-green-400 font-medium">Escritório de Arquitetura</span></p>
     </div>
+
+    <!-- Abas -->
+    <div class="flex gap-2 border-b border-slate-700 pb-0">
+      <button id="tabImgBtn" onclick="switchTab('img')"
+        class="tab-btn px-4 py-2 text-sm font-semibold rounded-t-lg border-b-2 border-green-400 text-green-400 bg-slate-800">
+        Imagem → DXF
+      </button>
+      <button id="tabPatBtn" onclick="switchTab('pat')"
+        class="tab-btn px-4 py-2 text-sm font-semibold rounded-t-lg border-b-2 border-transparent text-slate-400 hover:text-slate-200">
+        DXF/Imagem → PAT
+      </button>
+      <button id="tabKmlBtn" onclick="switchTab('kml')"
+        class="tab-btn px-4 py-2 text-sm font-semibold rounded-t-lg border-b-2 border-transparent text-slate-400 hover:text-slate-200">
+        KML → DXF
+      </button>
+    </div>
+
+    <!-- ABA: Imagem → DXF -->
+    <div id="tabImg">
 
     <!-- Upload -->
     <div id="dropZone" class="drop-zone rounded-xl p-6 text-center cursor-pointer" onclick="document.getElementById('fileInput').click()">
@@ -120,6 +160,21 @@
       </div>
     </div>
 
+    <!-- Nível de detalhe (só modo Otsu/Clássico) -->
+    <div id="nivelBox" class="hidden rounded-xl p-4 mt-1" style="background:var(--surface);border:1px solid var(--border)">
+      <div class="flex items-center justify-between mb-2">
+        <p class="text-slate-300 text-xs font-semibold">Nível de detalhe das linhas</p>
+        <span id="nivelVal" class="text-green-400 font-mono font-bold text-sm">7</span>
+      </div>
+      <input id="nivelRange" type="range" min="0" max="10" step="1" value="7"
+             oninput="document.getElementById('nivelVal').textContent = this.value"
+             class="w-full accent-green-400">
+      <div class="flex justify-between text-[11px] text-slate-500 mt-1">
+        <span>0 · simples (linhas retas)</span>
+        <span>10 · detalhado (segue curvas)</span>
+      </div>
+    </div>
+
     <!-- Botão -->
     <button id="convertBtn" class="btn-convert w-full text-white font-bold py-3.5 rounded-xl text-sm" onclick="convert()" disabled>
       Converter para DXF
@@ -164,6 +219,270 @@
         onclick="resetAll()">Nova conversão</button>
     </div>
 
+    </div><!-- /tabImg -->
+
+    <!-- ABA: DXF → PAT -->
+    <div id="tabPat" class="hidden space-y-5">
+
+      <div class="rounded-xl p-5 space-y-2" style="background:var(--surface);border:1px solid var(--border)">
+        <p class="text-green-400 font-semibold text-sm">O que é o arquivo .PAT?</p>
+        <p class="text-slate-400 text-xs leading-relaxed">
+          Padrão de hachura do AutoCAD. Gere a partir de um <b>DXF</b> ou direto de uma
+          <b>imagem</b> de padrão (piso, textura, tijolo). Como o PAT desenha só linhas,
+          use imagens em preto e branco / com traços nítidos — foto colorida vira ruído.
+        </p>
+      </div>
+
+      <!-- Dicas de imagem -->
+      <details class="rounded-xl overflow-hidden" style="background:var(--surface);border:1px solid var(--border)" open>
+        <summary class="px-5 py-3 text-green-400 font-semibold text-sm select-none">
+          💡 Como escolher a melhor imagem
+        </summary>
+        <div class="px-5 pb-4 space-y-3 text-xs leading-relaxed">
+          <div>
+            <p class="text-slate-200 font-semibold mb-1">✅ Funciona muito bem</p>
+            <ul class="text-slate-400 space-y-1 list-disc list-inside">
+              <li><b>PNG</b> em <b>preto e branco</b> (linhas pretas, fundo branco)</li>
+              <li>Traços nítidos e bem definidos — desenho de piso, tijolo, textura</li>
+              <li>Resolução boa: entre <b>800 e 1500 px</b></li>
+              <li>Melhor ainda: um <b>DXF</b> ou <b>SVG</b> (desenho vetorial exato)</li>
+            </ul>
+          </div>
+          <div>
+            <p class="text-slate-200 font-semibold mb-1">⚠️ Evite</p>
+            <ul class="text-slate-400 space-y-1 list-disc list-inside">
+              <li><b>JPEG</b> — a compressão cria sujeira cinza e o padrão fica com pontinhos</li>
+              <li>Foto colorida ou com sombra — vira ruído (se precisar, use o modo <b>Bordas</b>)</li>
+              <li>Imagem muito pequena ou borrada — perde os detalhes</li>
+            </ul>
+          </div>
+          <div>
+            <p class="text-slate-200 font-semibold mb-1">🔁 Se o padrão vai se repetir</p>
+            <p class="text-slate-400">
+              Use uma imagem <b>sem emenda</b> (as bordas de cima casam com as de baixo,
+              e esquerda com direita). Assim a hachura repete sem aparecer linha de junção.
+            </p>
+          </div>
+          <div>
+            <p class="text-slate-200 font-semibold mb-1">🎚️ Modos</p>
+            <p class="text-slate-400">
+              <b>Automático</b> serve na maioria dos casos ·
+              <b>Traços P&B</b> para desenho em preto e branco ·
+              <b>Bordas (foto)</b> para extrair contornos de uma foto/render.
+            </p>
+          </div>
+        </div>
+      </details>
+
+      <!-- Modo (só afeta imagem) -->
+      <div id="patModoBox" class="hidden rounded-xl p-3" style="background:var(--surface);border:1px solid var(--border)">
+        <p class="text-slate-400 text-xs mb-2">Modo (para imagem):</p>
+        <div class="grid grid-cols-3 gap-2 text-xs">
+          <label class="cursor-pointer">
+            <input type="radio" name="patModo" value="auto" checked class="peer hidden">
+            <div class="stat-chip peer-checked:border-green-400 peer-checked:text-green-400 text-slate-400 text-center py-2">Automático</div>
+          </label>
+          <label class="cursor-pointer">
+            <input type="radio" name="patModo" value="tracos" class="peer hidden">
+            <div class="stat-chip peer-checked:border-green-400 peer-checked:text-green-400 text-slate-400 text-center py-2">Traços P&B</div>
+          </label>
+          <label class="cursor-pointer">
+            <input type="radio" name="patModo" value="linhas" class="peer hidden">
+            <div class="stat-chip peer-checked:border-green-400 peer-checked:text-green-400 text-slate-400 text-center py-2">Bordas (foto)</div>
+          </label>
+        </div>
+      </div>
+
+      <!-- Upload DXF -->
+      <div id="dropZonePat" class="drop-zone rounded-xl p-6 text-center cursor-pointer"
+           onclick="document.getElementById('fileInputPat').click()">
+        <input type="file" id="fileInputPat" accept=".dxf,.svg,image/svg+xml,image/png,image/jpeg,image/jpg,image/bmp,image/tiff,image/webp" class="hidden">
+        <div id="uploadPromptPat">
+          <svg class="w-10 h-10 mx-auto mb-3 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+          </svg>
+          <p class="text-slate-300 font-medium">Arraste um .DXF, .SVG ou imagem, ou clique para selecionar</p>
+          <p class="text-slate-500 text-xs mt-1">.DXF · .SVG · PNG · JPG · imagem de padrão em preto e branco</p>
+        </div>
+        <div id="previewAreaPat" class="hidden flex-col items-center gap-2">
+          <svg class="w-12 h-12 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+          <p id="previewNamePat" class="text-slate-300 text-sm font-medium"></p>
+          <p id="previewSizePat" class="text-slate-500 text-xs"></p>
+          <button class="text-xs text-slate-500 hover:text-slate-300 underline mt-1"
+            onclick="event.stopPropagation(); resetPat()">Trocar arquivo</button>
+        </div>
+      </div>
+
+      <button id="convertPatBtn" class="btn-convert w-full text-white font-bold py-3.5 rounded-xl text-sm"
+              onclick="convertPat()" disabled>
+        Gerar arquivo .PAT
+      </button>
+
+      <div id="loadingPat" class="hidden space-y-3">
+        <div class="pulse-bar"></div>
+        <p class="text-center text-slate-400 text-sm">Analisando padrões de linha...</p>
+      </div>
+
+      <div id="resultPat" class="hidden rounded-xl p-5 space-y-4" style="background:var(--surface);border:1px solid var(--border)">
+        <div class="flex items-center gap-2">
+          <svg class="w-5 h-5 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+          </svg>
+          <p class="text-white font-semibold text-sm">Padrão gerado com sucesso</p>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div class="stat-chip">
+            <p class="text-green-400 font-bold text-lg" id="statFamilies">—</p>
+            <p class="text-slate-500 text-xs">famílias de linhas</p>
+          </div>
+          <div class="stat-chip">
+            <p class="text-green-400 font-bold text-lg" id="statSegsPat">—</p>
+            <p class="text-slate-500 text-xs">segmentos lidos</p>
+          </div>
+        </div>
+        <div id="patScaleBox" class="hidden rounded-lg p-3 space-y-3" style="background:#0f172a;border:1px solid var(--border)">
+          <p class="text-slate-300 text-xs">📐 Calcule a escala da hachura no AutoCAD:</p>
+          <div class="flex items-end gap-2 flex-wrap">
+            <div>
+              <label class="text-slate-500 text-[11px] block mb-1">Tamanho do padrão</label>
+              <div class="flex items-center gap-1">
+                <input id="scaleSize" type="number" value="60" min="0.1" step="1"
+                       oninput="calcScale()"
+                       class="w-16 bg-slate-800 text-white text-sm rounded px-2 py-1.5 border border-slate-700 outline-none focus:border-green-400">
+                <span class="text-slate-400 text-xs">cm</span>
+              </div>
+            </div>
+            <div>
+              <label class="text-slate-500 text-[11px] block mb-1">Unidade do desenho</label>
+              <select id="scaleUnit" onchange="calcScale()"
+                      class="bg-slate-800 text-white text-sm rounded px-2 py-1.5 border border-slate-700 outline-none focus:border-green-400">
+                <option value="m">Metros</option>
+                <option value="cm" selected>Centímetros</option>
+                <option value="mm">Milímetros</option>
+              </select>
+            </div>
+          </div>
+          <div class="flex items-center justify-between rounded-lg px-3 py-2" style="background:#0b1220;border:1px solid var(--border)">
+            <span class="text-slate-400 text-xs">Use esta <b>Escala</b> na hachura:</span>
+            <span id="scaleResult" class="text-green-400 font-mono font-bold text-base">—</span>
+          </div>
+          <p class="text-slate-500 text-[11px] leading-relaxed">
+            1 azulejo do padrão = <span id="statTile" class="text-slate-400 font-mono">—</span> unidades ·
+            padrão pequeno demais = aumente a escala; grande demais = diminua.
+          </p>
+        </div>
+        <p class="text-slate-400 text-xs">
+          Para usar no AutoCAD: copie o .PAT para a pasta de suporte do AutoCAD
+          e use o comando <span class="text-green-400 font-mono">HATCH</span> → escolha o padrão pelo nome do arquivo.
+        </p>
+        <button class="w-full py-3 rounded-xl font-bold text-sm text-slate-900"
+                style="background:var(--green)" onclick="downloadPat()">
+          Baixar .PAT
+        </button>
+        <button class="w-full py-2 rounded-xl text-xs text-slate-500 hover:text-slate-300 border border-slate-700"
+                onclick="resetPat()">Novo arquivo</button>
+      </div>
+
+    </div><!-- /tabPat -->
+
+    <!-- ABA: KML → DXF -->
+    <div id="tabKml" class="hidden space-y-5">
+
+      <div class="rounded-xl p-5 space-y-2" style="background:var(--surface);border:1px solid var(--border)">
+        <p class="text-green-400 font-semibold text-sm">KML/KMZ → DXF georreferenciado</p>
+        <p class="text-slate-400 text-xs leading-relaxed">
+          Converte arquivos do <b>Google Earth</b> (.kml/.kmz) em DXF, projetando
+          lat/long para <b>UTM em metros</b>. Pontos, linhas e polígonos viram
+          layers com o nome de cada local. No AutoCAD, abra o DXF e use
+          <b>Salvar como → .dwg</b> se precisar.
+        </p>
+      </div>
+
+      <!-- Upload KML -->
+      <div id="dropZoneKml" class="drop-zone rounded-xl p-6 text-center cursor-pointer"
+           onclick="document.getElementById('fileInputKml').click()">
+        <input type="file" id="fileInputKml" accept=".kml,.kmz,application/vnd.google-earth.kml+xml,application/vnd.google-earth.kmz" class="hidden">
+        <div id="uploadPromptKml">
+          <svg class="w-10 h-10 mx-auto mb-3 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7z"/>
+            <circle cx="12" cy="9" r="2.5"/>
+          </svg>
+          <p class="text-slate-300 font-medium">Arraste um .KML ou .KMZ, ou clique para selecionar</p>
+          <p class="text-slate-500 text-xs mt-1">Google Earth · pontos, linhas e polígonos</p>
+        </div>
+        <div id="previewAreaKml" class="hidden flex-col items-center gap-2">
+          <svg class="w-12 h-12 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+          </svg>
+          <p id="previewNameKml" class="text-slate-300 text-sm font-medium"></p>
+          <p id="previewSizeKml" class="text-slate-500 text-xs"></p>
+          <button class="text-xs text-slate-500 hover:text-slate-300 underline mt-1"
+            onclick="event.stopPropagation(); resetKml()">Trocar arquivo</button>
+        </div>
+      </div>
+
+      <!-- Sistema de coordenadas -->
+      <div class="rounded-xl p-3" style="background:var(--surface);border:1px solid var(--border)">
+        <p class="text-slate-400 text-xs mb-2">Coordenadas do DXF:</p>
+        <div class="grid grid-cols-2 gap-2 text-xs">
+          <label class="cursor-pointer">
+            <input type="radio" name="kmlCoord" value="utm" checked class="peer hidden">
+            <div class="stat-chip peer-checked:border-green-400 peer-checked:text-green-400 text-slate-400 text-center py-2">UTM real (GPS)</div>
+          </label>
+          <label class="cursor-pointer">
+            <input type="radio" name="kmlCoord" value="local" class="peer hidden">
+            <div class="stat-chip peer-checked:border-green-400 peer-checked:text-green-400 text-slate-400 text-center py-2">Local (0,0)</div>
+          </label>
+        </div>
+        <p class="text-slate-500 text-[11px] mt-2 leading-relaxed">
+          <b>UTM real</b>: georreferenciado, bate com levantamento/GPS ·
+          <b>Local</b>: desenho perto da origem, mesmas medidas.
+        </p>
+      </div>
+
+      <button id="convertKmlBtn" class="btn-convert w-full text-white font-bold py-3.5 rounded-xl text-sm"
+              onclick="convertKml()" disabled>
+        Gerar DXF
+      </button>
+
+      <div id="loadingKml" class="hidden space-y-3">
+        <div class="pulse-bar"></div>
+        <p class="text-center text-slate-400 text-sm">Projetando coordenadas (UTM)...</p>
+      </div>
+
+      <div id="resultKml" class="hidden rounded-xl p-5 space-y-4" style="background:var(--surface);border:1px solid var(--border)">
+        <div class="flex items-center gap-2">
+          <svg class="w-5 h-5 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+          </svg>
+          <p class="text-white font-semibold text-sm">DXF gerado com sucesso</p>
+        </div>
+        <div class="grid grid-cols-3 gap-2">
+          <div class="stat-chip">
+            <p class="text-green-400 font-bold text-lg" id="statPlace">—</p>
+            <p class="text-slate-500 text-xs">locais</p>
+          </div>
+          <div class="stat-chip">
+            <p class="text-green-400 font-bold text-lg" id="statEnt">—</p>
+            <p class="text-slate-500 text-xs">geometrias</p>
+          </div>
+          <div class="stat-chip">
+            <p class="text-green-400 font-bold text-sm" id="statZona">—</p>
+            <p class="text-slate-500 text-xs">zona UTM</p>
+          </div>
+        </div>
+        <button class="w-full py-3 rounded-xl font-bold text-sm text-slate-900"
+                style="background:var(--green)" onclick="downloadKml()">
+          Baixar .DXF
+        </button>
+        <button class="w-full py-2 rounded-xl text-xs text-slate-500 hover:text-slate-300 border border-slate-700"
+                onclick="resetKml()">Novo arquivo</button>
+      </div>
+
+    </div><!-- /tabKml -->
+
   </div>
 
   <script>
@@ -171,6 +490,203 @@
     let selectedFile = null;
     let resultBlob = null;
     let resultFilename = '';
+
+    // ── Troca de abas ─────────────────────────────────────────────────────────
+    function switchTab(tab) {
+      const tabs = ['img', 'pat', 'kml'];
+      const ids  = { img: 'tabImg', pat: 'tabPat', kml: 'tabKml' };
+      const btns = { img: 'tabImgBtn', pat: 'tabPatBtn', kml: 'tabKmlBtn' };
+      tabs.forEach(t => {
+        document.getElementById(ids[t]).classList.toggle('hidden', tab !== t);
+        const b = document.getElementById(btns[t]);
+        b.classList.toggle('border-green-400', tab === t);
+        b.classList.toggle('text-green-400', tab === t);
+        b.classList.toggle('bg-slate-800', tab === t);
+        b.classList.toggle('border-transparent', tab !== t);
+        b.classList.toggle('text-slate-400', tab !== t);
+      });
+    }
+
+    // ── Aba PAT ───────────────────────────────────────────────────────────────
+    let patFile = null;
+    let patBlob = null;
+    let patFilename = '';
+
+    const dzPat = document.getElementById('dropZonePat');
+    dzPat.addEventListener('dragover', e => { e.preventDefault(); dzPat.classList.add('drag-over'); });
+    dzPat.addEventListener('dragleave', () => dzPat.classList.remove('drag-over'));
+    dzPat.addEventListener('drop', e => {
+      e.preventDefault(); dzPat.classList.remove('drag-over');
+      const f = e.dataTransfer.files[0];
+      if (f) setPatFile(f);
+    });
+    document.getElementById('fileInputPat').addEventListener('change', e => {
+      if (e.target.files[0]) setPatFile(e.target.files[0]);
+    });
+
+    let patTileH = 100;
+    // fator de conversao de cm para a unidade do desenho
+    const UNIT_FROM_CM = { m: 0.01, cm: 1, mm: 10 };
+    function calcScale() {
+      const sizeCm = parseFloat(document.getElementById('scaleSize').value) || 0;
+      const unit = document.getElementById('scaleUnit').value;
+      const drawingUnits = sizeCm * (UNIT_FROM_CM[unit] || 1); // tamanho na unidade do desenho
+      const scale = drawingUnits / (patTileH || 100);
+      const out = document.getElementById('scaleResult');
+      out.textContent = scale > 0
+        ? scale.toFixed(scale < 1 ? 4 : 2).replace('.', ',')
+        : '—';
+    }
+
+    const PAT_IMG_EXT = ['.png','.jpg','.jpeg','.bmp','.tiff','.webp'];
+    function setPatFile(f) {
+      const n = f.name.toLowerCase();
+      const isDxf = n.endsWith('.dxf');
+      const isSvg = n.endsWith('.svg');
+      const isImg = PAT_IMG_EXT.some(e => n.endsWith(e));
+      if (!isDxf && !isSvg && !isImg) { alert('Selecione um .DXF, .SVG ou uma imagem (PNG/JPG)'); return; }
+      patFile = f;
+      document.getElementById('previewNamePat').textContent = f.name;
+      document.getElementById('previewSizePat').textContent = (f.size / 1024).toFixed(0) + ' KB';
+      document.getElementById('uploadPromptPat').classList.add('hidden');
+      document.getElementById('previewAreaPat').classList.remove('hidden');
+      document.getElementById('previewAreaPat').classList.add('flex');
+      // mostra seletor de modo para imagem e SVG (ambos rasterizam)
+      document.getElementById('patModoBox').classList.toggle('hidden', !(isImg || isSvg));
+      document.getElementById('convertPatBtn').disabled = false;
+    }
+
+    function resetPat() {
+      patFile = null; patBlob = null;
+      document.getElementById('fileInputPat').value = '';
+      document.getElementById('uploadPromptPat').classList.remove('hidden');
+      document.getElementById('previewAreaPat').classList.add('hidden');
+      document.getElementById('patModoBox').classList.add('hidden');
+      document.getElementById('convertPatBtn').disabled = true;
+      document.getElementById('resultPat').classList.add('hidden');
+    }
+
+    async function convertPat() {
+      if (!patFile) return;
+      document.getElementById('convertPatBtn').disabled = true;
+      document.getElementById('loadingPat').classList.remove('hidden');
+      document.getElementById('resultPat').classList.add('hidden');
+
+      const fd = new FormData();
+      fd.append('file', patFile);
+      const modo = document.querySelector('input[name="patModo"]:checked')?.value || 'auto';
+
+      try {
+        const res = await fetch('/convert-pat?modo=' + modo, { method: 'POST', body: fd });
+        if (!res.ok) { const e = await res.json(); throw new Error(e.detail || res.status); }
+
+        patBlob = await res.blob();
+        const cd = res.headers.get('content-disposition') || '';
+        patFilename = cd.match(/filename="?([^"]+)"?/)?.[1] || 'padrao.pat';
+
+        document.getElementById('statFamilies').textContent = res.headers.get('X-Families') || '—';
+        document.getElementById('statSegsPat').textContent  = res.headers.get('X-Segments')  || '—';
+
+        // calculadora de escala (imagem retorna X-Tile ~ "75.0x100.0")
+        const tile = res.headers.get('X-Tile');
+        const scaleBox = document.getElementById('patScaleBox');
+        if (tile) {
+          patTileH = parseFloat(tile.split('x')[1]) || 100;
+          document.getElementById('statTile').textContent = tile;
+          calcScale();
+          scaleBox.classList.remove('hidden');
+        } else {
+          scaleBox.classList.add('hidden');
+        }
+
+        document.getElementById('loadingPat').classList.add('hidden');
+        document.getElementById('resultPat').classList.remove('hidden');
+      } catch (err) {
+        document.getElementById('loadingPat').classList.add('hidden');
+        document.getElementById('convertPatBtn').disabled = false;
+        alert('Erro: ' + err.message);
+      }
+    }
+
+    function downloadPat() {
+      if (!patBlob) return;
+      const url = URL.createObjectURL(patBlob);
+      const a = document.createElement('a');
+      a.href = url; a.download = patFilename; a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // ── Aba KML ───────────────────────────────────────────────────────────────
+    let kmlFile = null, kmlBlob = null, kmlFilename = '';
+    const dzKml = document.getElementById('dropZoneKml');
+    dzKml.addEventListener('dragover', e => { e.preventDefault(); dzKml.classList.add('drag-over'); });
+    dzKml.addEventListener('dragleave', () => dzKml.classList.remove('drag-over'));
+    dzKml.addEventListener('drop', e => {
+      e.preventDefault(); dzKml.classList.remove('drag-over');
+      if (e.dataTransfer.files[0]) setKmlFile(e.dataTransfer.files[0]);
+    });
+    document.getElementById('fileInputKml').addEventListener('change', e => {
+      if (e.target.files[0]) setKmlFile(e.target.files[0]);
+    });
+
+    function setKmlFile(f) {
+      const n = f.name.toLowerCase();
+      if (!n.endsWith('.kml') && !n.endsWith('.kmz')) { alert('Selecione um arquivo .KML ou .KMZ'); return; }
+      kmlFile = f;
+      document.getElementById('previewNameKml').textContent = f.name;
+      document.getElementById('previewSizeKml').textContent = (f.size / 1024).toFixed(0) + ' KB';
+      document.getElementById('uploadPromptKml').classList.add('hidden');
+      document.getElementById('previewAreaKml').classList.remove('hidden');
+      document.getElementById('previewAreaKml').classList.add('flex');
+      document.getElementById('convertKmlBtn').disabled = false;
+    }
+
+    function resetKml() {
+      kmlFile = null; kmlBlob = null;
+      document.getElementById('fileInputKml').value = '';
+      document.getElementById('uploadPromptKml').classList.remove('hidden');
+      document.getElementById('previewAreaKml').classList.add('hidden');
+      document.getElementById('convertKmlBtn').disabled = true;
+      document.getElementById('resultKml').classList.add('hidden');
+    }
+
+    async function convertKml() {
+      if (!kmlFile) return;
+      document.getElementById('convertKmlBtn').disabled = true;
+      document.getElementById('loadingKml').classList.remove('hidden');
+      document.getElementById('resultKml').classList.add('hidden');
+
+      const local = document.querySelector('input[name="kmlCoord"]:checked')?.value === 'local';
+      const fd = new FormData();
+      fd.append('file', kmlFile);
+
+      try {
+        const res = await fetch('/convert-kml?local=' + local, { method: 'POST', body: fd });
+        if (!res.ok) { let d; try { d = (await res.json()).detail; } catch (e) {} throw new Error(d || res.status); }
+
+        kmlBlob = await res.blob();
+        const cd = res.headers.get('content-disposition') || '';
+        kmlFilename = cd.match(/filename="?([^"]+)"?/)?.[1] || 'terreno.dxf';
+
+        document.getElementById('statPlace').textContent = res.headers.get('X-Placemarks') || '—';
+        document.getElementById('statEnt').textContent   = res.headers.get('X-Entidades') || '—';
+        document.getElementById('statZona').textContent  = res.headers.get('X-Zona') || '—';
+        document.getElementById('loadingKml').classList.add('hidden');
+        document.getElementById('resultKml').classList.remove('hidden');
+      } catch (err) {
+        document.getElementById('loadingKml').classList.add('hidden');
+        document.getElementById('convertKmlBtn').disabled = false;
+        alert('Erro: ' + err.message);
+      }
+    }
+
+    function downloadKml() {
+      if (!kmlBlob) return;
+      const url = URL.createObjectURL(kmlBlob);
+      const a = document.createElement('a');
+      a.href = url; a.download = kmlFilename; a.click();
+      URL.revokeObjectURL(url);
+    }
 
     // Drag & drop
     const dropZone = document.getElementById('dropZone');
@@ -214,6 +730,8 @@
       document.querySelectorAll('.mode-card').forEach(c => c.classList.remove('selected'));
       el.classList.add('selected');
       selectedMode = el.dataset.mode;
+      // slider de detalhe só faz sentido no modo clássico (Otsu)
+      document.getElementById('nivelBox').classList.toggle('hidden', selectedMode !== 'classico');
     }
 
     async function convert() {
@@ -233,7 +751,8 @@
       fd.append('file', selectedFile);
 
       try {
-        const res = await fetch(`/convert?modo=${selectedMode}`, { method: 'POST', body: fd });
+        const nivel = document.getElementById('nivelRange').value;
+        const res = await fetch(`/convert?modo=${selectedMode}&nivel=${nivel}`, { method: 'POST', body: fd });
         clearInterval(msgTimer);
 
         if (!res.ok) throw new Error('Erro ' + res.status);
@@ -272,6 +791,22 @@
       document.getElementById('result').style.display = 'none';
       document.getElementById('loading').classList.add('hidden');
     }
+
+    // ── Coraçõezinhos ao clicar ──────────────────────────────────────
+    document.addEventListener('click', e => {
+      const emojis = ['💕','💖','💗','❤️','💘'];
+      const n = 3;
+      for (let i = 0; i < n; i++) {
+        const h = document.createElement('span');
+        h.className = 'heart-pop';
+        h.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+        h.style.left = (e.clientX + (Math.random() * 30 - 15)) + 'px';
+        h.style.top  = (e.clientY + (Math.random() * 10 - 5)) + 'px';
+        h.style.animationDelay = (i * 60) + 'ms';
+        document.body.appendChild(h);
+        setTimeout(() => h.remove(), 1100);
+      }
+    });
   </script>
 </body>
 </html>

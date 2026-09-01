@@ -1,8 +1,12 @@
 # Arquivos temporários da API
 output_*.dxf
+output_*.pat
 input_*.jpg
 input_*.png
 input_*.jpeg
+worker-engine/output_*.dxf
+worker-engine/*.out.dxf
+worker-engine/teste.png.out.dxf
 
 # Python
 __pycache__/
