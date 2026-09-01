@@ -20,6 +20,9 @@ def _collect_segments(msp):
             pts = [(v.dxf.location.x, v.dxf.location.y) for v in ent.vertices]
             for i in range(len(pts) - 1):
                 segs.append((*pts[i], *pts[i+1]))
+            # fecha o contorno (senao um lado do poligono some da hachura)
+            if ent.is_closed and len(pts) > 2:
+                segs.append((*pts[-1], *pts[0]))
         elif t == 'LINE':
             s, e = ent.dxf.start, ent.dxf.end
             segs.append((s.x, s.y, e.x, e.y))

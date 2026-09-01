@@ -34,12 +34,21 @@ def _get_hed():
     return _HED
 
 
+# Teto de resolucao do HED. A rede guarda varios mapas de ativacao
+# intermediarios: rodar na resolucao original de uma planta grande
+# (ex.: 3573px) consome ~2 GB e o processo e morto pelo OOM killer.
+# 1500px preserva o detalhe util e cabe na memoria com folga.
+MAX_HED_RES = 1500
+
+
 def hed_edges(image_path: str) -> np.ndarray:
     """Roda o HED e devolve um mapa de bordas (uint8, bordas claras em fundo escuro),
     no MESMO tamanho da imagem original."""
     pil = Image.open(image_path).convert("RGB")
     w, h = pil.size
-    res = max(w, h)  # mantem a resolucao original (sem perder detalhe)
+    # limita a resolucao de processamento; o mapa volta ao tamanho original
+    # no resize abaixo, entao o DXF continua na escala da imagem enviada.
+    res = min(max(w, h), MAX_HED_RES)
     hed = _get_hed()
     edge = hed(pil, detect_resolution=res, image_resolution=res)
     edge = edge.convert("L").resize((w, h), Image.BILINEAR)

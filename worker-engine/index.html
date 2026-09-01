@@ -3,487 +3,893 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Meu Conversor CAD — The JenArch</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <title>Estúdio CAD — The JenArch</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300&family=Karla:wght@300;400;500;600;700&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
   <style>
-    :root { --green: #4ade80; --green-dark: #16a34a; --bg: #0f172a; --surface: #1e293b; --border: #334155; }
-    body { background: var(--bg); font-family: 'Inter', system-ui, sans-serif; }
+    /* ═══════════════════════════════════════════════════════════════
+       Ateliê CAD · The JenArch
+       Papel vegetal sobre prancheta. Rosé-poeira e terracota queimada.
+       ═══════════════════════════════════════════════════════════════ */
+    :root {
+      --paper:      #faf6f2;   /* papel vegetal */
+      --paper-warm: #f3ebe4;   /* dobra do papel */
+      --ink:        #3b3138;   /* grafite quente */
+      --ink-soft:   #8a7a80;   /* anotação a lápis */
+      --rose:       #c47b8a;   /* rosé-poeira — traço principal */
+      --rose-pale:  #e8cdd2;   /* rosé lavado */
+      --terra:      #b8695a;   /* terracota queimada — destaque */
+      --sage:       #9aa891;   /* verde-oliva pálido — confirmação */
+      --line:       #e0d3cc;   /* linha de cota */
+      --grid:       rgba(196,123,138,.07);
+    }
 
-    .drop-zone { border: 2px dashed var(--border); transition: all .2s; }
-    .drop-zone.drag-over { border-color: var(--green); background: rgba(74,222,128,.06); }
+    * { box-sizing: border-box; }
 
-    .mode-card { border: 2px solid var(--border); transition: all .2s; cursor: pointer; }
-    .mode-card:hover { border-color: #64748b; background: #1e2d3d; }
-    .mode-card.selected { border-color: var(--green); background: rgba(74,222,128,.08); }
-    .mode-card.selected .mode-badge { background: var(--green); color: #0f172a; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      /* malha técnica: papel milimetrado suave */
+      background-image:
+        linear-gradient(var(--grid) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+      background-size: 28px 28px;
+      font-family: 'Karla', system-ui, sans-serif;
+      color: var(--ink);
+      font-size: 14px;
+      line-height: 1.6;
+      padding: 32px 20px 48px;
+    }
 
-    .mode-badge { background: var(--border); color: #94a3b8; font-size: .65rem; font-weight: 700;
-      padding: 2px 8px; border-radius: 99px; letter-spacing: .05em; transition: all .2s; }
+    /* ── Estrutura: prancheta + mural ──────────────────────────────── */
+    .atelier {
+      max-width: 1180px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: minmax(0,1fr) 300px;
+      gap: 34px;
+      align-items: start;
+    }
+    @media (max-width: 940px) {
+      .atelier { grid-template-columns: 1fr; }
+      .mural { order: 2; }
+    }
 
-    .btn-convert { background: var(--green-dark); transition: all .2s; }
-    .btn-convert:hover:not(:disabled) { background: var(--green); color: #0f172a; }
-    .btn-convert:disabled { opacity: .4; cursor: not-allowed; }
+    /* ── Cabeçalho ─────────────────────────────────────────────────── */
+    .marca {
+      text-align: center;
+      margin-bottom: 30px;
+      padding-bottom: 22px;
+      border-bottom: 1px solid var(--line);
+      position: relative;
+    }
+    .marca::after {
+      /* marca de cota: o traço de arquiteto */
+      content: '';
+      position: absolute; bottom: -1px; left: 50%;
+      transform: translateX(-50%);
+      width: 62px; height: 3px;
+      background: var(--rose);
+      border-radius: 2px;
+    }
+    .marca h1 {
+      font-family: 'Cormorant Garamond', Georgia, serif;
+      font-size: clamp(2.1rem, 5vw, 3rem);
+      font-weight: 300;
+      letter-spacing: .06em;
+      margin: 0 0 4px;
+      color: var(--ink);
+    }
+    .marca h1 em {
+      font-style: italic;
+      font-weight: 400;
+      color: var(--rose);
+    }
+    .marca .assinatura {
+      font-family: 'Karla', sans-serif;
+      font-size: .68rem;
+      letter-spacing: .32em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+      font-weight: 500;
+    }
 
-    .spinner { width: 20px; height: 20px; border: 2px solid rgba(255,255,255,.3);
-      border-top-color: white; border-radius: 50%; animation: spin .7s linear infinite; display: inline-block; }
-    @keyframes spin { to { transform: rotate(360deg); } }
+    /* ── Abas: guias de pasta ──────────────────────────────────────── */
+    .guias {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 26px;
+      border-bottom: 1px solid var(--line);
+      flex-wrap: wrap;
+    }
+    .tab-btn {
+      font-family: 'Karla', sans-serif;
+      font-size: .78rem;
+      font-weight: 500;
+      letter-spacing: .04em;
+      padding: 11px 18px;
+      border: 1px solid transparent;
+      border-bottom: none;
+      border-radius: 9px 9px 0 0;
+      background: transparent;
+      color: var(--ink-soft);
+      cursor: pointer;
+      transition: all .22s ease;
+      margin-bottom: -1px;
+    }
+    .tab-btn:hover { color: var(--rose); background: rgba(196,123,138,.05); }
+    .tab-btn.ativa {
+      background: var(--paper);
+      border-color: var(--line);
+      color: var(--rose);
+      font-weight: 700;
+      box-shadow: 0 -2px 0 var(--rose) inset;
+    }
 
-    .preview-img { max-height: 200px; object-fit: contain; border-radius: 8px; }
+    /* ── Cartões ───────────────────────────────────────────────────── */
+    .folha {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 22px;
+      box-shadow: 0 1px 2px rgba(59,49,56,.03), 0 8px 24px -18px rgba(59,49,56,.2);
+    }
+    .rotulo {
+      font-size: .64rem;
+      letter-spacing: .22em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
 
-    .stat-chip { background: #1e293b; border: 1px solid var(--border); border-radius: 8px;
-      padding: 8px 14px; text-align: center; }
+    /* ── Zona de upload ────────────────────────────────────────────── */
+    .drop-zone {
+      border: 1.5px dashed var(--rose-pale);
+      border-radius: 14px;
+      background: #fff;
+      padding: 32px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all .25s ease;
+    }
+    .drop-zone:hover { border-color: var(--rose); background: #fffdfc; }
+    .drop-zone.drag-over {
+      border-color: var(--terra);
+      background: rgba(196,123,138,.06);
+      transform: scale(1.006);
+    }
+    .drop-zone .dica {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.16rem;
+      font-style: italic;
+      color: var(--ink);
+      margin: 0 0 3px;
+    }
+    .drop-zone .formatos {
+      font-family: 'Courier Prime', monospace;
+      font-size: .68rem;
+      letter-spacing: .08em;
+      color: var(--ink-soft);
+      margin: 0;
+    }
+    .preview-img {
+      max-height: 190px;
+      object-fit: contain;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      padding: 5px;
+      background: #fff;
+    }
 
-    .pulse-bar { height: 3px; background: linear-gradient(90deg, transparent, var(--green), transparent);
-      background-size: 200% 100%; animation: pulse-slide 1.4s ease-in-out infinite; border-radius: 99px; }
-    @keyframes pulse-slide { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+    /* ── Cartões de modo ───────────────────────────────────────────── */
+    .modos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 11px; }
+    @media (max-width: 560px) { .modos { grid-template-columns: 1fr; } }
 
+    .mode-card {
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      padding: 15px 13px;
+      background: #fff;
+      cursor: pointer;
+      transition: all .22s ease;
+      position: relative;
+    }
+    .mode-card:hover { border-color: var(--rose-pale); transform: translateY(-1px); }
+    .mode-card.selected {
+      border-color: var(--rose);
+      background: linear-gradient(160deg, #fff, rgba(232,205,210,.28));
+      box-shadow: 0 3px 14px -8px rgba(196,123,138,.55);
+    }
+    .mode-card.selected::before {
+      /* selo de aprovação, como carimbo na prancha */
+      content: '✓';
+      position: absolute; top: 10px; right: 12px;
+      color: var(--rose); font-size: .8rem; font-weight: 700;
+    }
+    .mode-card .nome {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.24rem;
+      font-weight: 600;
+      color: var(--ink);
+      margin: 8px 0 2px;
+      letter-spacing: .01em;
+    }
+    .mode-card .uso { font-size: .73rem; color: var(--ink-soft); line-height: 1.45; }
+    .mode-badge {
+      font-family: 'Courier Prime', monospace;
+      font-size: .58rem;
+      letter-spacing: .12em;
+      color: var(--ink-soft);
+      background: var(--paper-warm);
+      padding: 2px 7px;
+      border-radius: 20px;
+      transition: all .22s ease;
+    }
+    .mode-card.selected .mode-badge { background: var(--rose); color: #fff; }
+
+    /* ── Botões ────────────────────────────────────────────────────── */
+    .btn-convert {
+      width: 100%;
+      font-family: 'Karla', sans-serif;
+      font-size: .82rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      padding: 14px;
+      border: none;
+      border-radius: 10px;
+      background: var(--rose);
+      color: #fff;
+      cursor: pointer;
+      transition: all .22s ease;
+      box-shadow: 0 3px 12px -5px rgba(196,123,138,.7);
+    }
+    .btn-convert:hover:not(:disabled) {
+      background: var(--terra);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 18px -6px rgba(184,105,90,.65);
+    }
+    .btn-convert:disabled {
+      background: var(--paper-warm);
+      color: var(--ink-soft);
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+    .btn-baixar {
+      width: 100%;
+      font-family: 'Karla', sans-serif;
+      font-size: .82rem; font-weight: 700;
+      letter-spacing: .1em; text-transform: uppercase;
+      padding: 13px; border: none; border-radius: 10px;
+      background: var(--sage); color: #fff; cursor: pointer;
+      transition: all .22s ease;
+    }
+    .btn-baixar:hover { filter: brightness(1.07); transform: translateY(-1px); }
+    .btn-suave {
+      width: 100%;
+      font-size: .74rem;
+      padding: 9px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: transparent;
+      color: var(--ink-soft);
+      cursor: pointer;
+      transition: all .2s ease;
+    }
+    .btn-suave:hover { border-color: var(--rose-pale); color: var(--rose); }
+
+    /* ── Carregando: fio de linha ──────────────────────────────────── */
+    .pulse-bar {
+      height: 2px;
+      border-radius: 99px;
+      background: linear-gradient(90deg, transparent, var(--rose), var(--terra), transparent);
+      background-size: 200% 100%;
+      animation: fio 1.5s ease-in-out infinite;
+    }
+    @keyframes fio { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+    /* ── Resultado ─────────────────────────────────────────────────── */
     #result { display: none; }
+    .stat-chip {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 11px 8px;
+      text-align: center;
+    }
+    .stat-chip .valor {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--terra);
+      line-height: 1.1;
+    }
+    .stat-chip .rot {
+      font-size: .63rem;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+      margin-top: 2px;
+    }
+
+    /* ── Formulário ────────────────────────────────────────────────── */
+    input[type="number"], select {
+      font-family: 'Karla', sans-serif;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 7px 10px;
+      color: var(--ink);
+      font-size: .82rem;
+      outline: none;
+      transition: border-color .2s;
+    }
+    input[type="number"]:focus, select:focus { border-color: var(--rose); }
+    input[type="range"] { width: 100%; accent-color: var(--rose); }
+
+    .escolha { cursor: pointer; }
+    .escolha .opcao {
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      padding: 9px 6px;
+      text-align: center;
+      font-size: .74rem;
+      color: var(--ink-soft);
+      background: #fff;
+      transition: all .2s ease;
+    }
+    .escolha input:checked + .opcao {
+      border-color: var(--rose);
+      color: var(--rose);
+      background: rgba(232,205,210,.3);
+      font-weight: 600;
+    }
+
+    details { border: 1px solid var(--line); border-radius: 11px; background: #fff; overflow: hidden; }
+    summary {
+      padding: 12px 18px;
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.05rem;
+      font-style: italic;
+      color: var(--rose);
+      cursor: pointer;
+      list-style: none;
+      user-select: none;
+    }
+    summary::-webkit-details-marker { display: none; }
+    .texto-nota { font-size: .76rem; color: var(--ink-soft); line-height: 1.6; }
+    .texto-nota b { color: var(--ink); font-weight: 600; }
+    a, .link { color: var(--terra); }
+
+    /* ═══ MURAL DE RECADOS ═══════════════════════════════════════════ */
+    .mural {
+      position: sticky;
+      top: 32px;
+    }
+    .mural-topo {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 14px;
+      padding-bottom: 9px;
+      border-bottom: 1px solid var(--line);
+    }
+    .mural-topo h2 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.3rem;
+      font-style: italic;
+      font-weight: 400;
+      margin: 0;
+      color: var(--ink);
+    }
+    .btn-novo-recado {
+      font-size: .68rem;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      font-weight: 600;
+      color: var(--rose);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 3px 6px;
+      border-radius: 6px;
+      transition: all .2s;
+    }
+    .btn-novo-recado:hover { background: rgba(196,123,138,.1); }
+
+    .recados { display: flex; flex-direction: column; gap: 13px; }
+
+    .recado {
+      position: relative;
+      padding: 15px 14px 12px;
+      border-radius: 2px;
+      font-family: 'Karla', sans-serif;
+      font-size: .82rem;
+      line-height: 1.5;
+      color: #4a3f42;
+      box-shadow: 0 4px 10px -4px rgba(59,49,56,.28);
+      transition: transform .2s ease, box-shadow .2s ease;
+    }
+    .recado::after {
+      /* canto inferior dobrado, como post-it de verdade */
+      content: '';
+      position: absolute; right: 0; bottom: 0;
+      width: 16px; height: 16px;
+      background: linear-gradient(135deg, transparent 50%, rgba(59,49,56,.14) 50%, rgba(59,49,56,.07));
+    }
+    .recado:nth-child(4n+1) { background: #fce8ec; transform: rotate(-1.1deg); }
+    .recado:nth-child(4n+2) { background: #fdf0dd; transform: rotate(.8deg); }
+    .recado:nth-child(4n+3) { background: #e9f0e4; transform: rotate(-.5deg); }
+    .recado:nth-child(4n+4) { background: #e7eef4; transform: rotate(1.3deg); }
+    .recado:hover {
+      transform: rotate(0deg) translateY(-2px);
+      box-shadow: 0 8px 18px -6px rgba(59,49,56,.32);
+      z-index: 2;
+    }
+    .recado textarea {
+      width: 100%;
+      border: none;
+      background: transparent;
+      resize: none;
+      font-family: inherit;
+      font-size: inherit;
+      line-height: inherit;
+      color: inherit;
+      outline: none;
+      overflow: hidden;
+      min-height: 20px;
+      padding: 0;
+      display: block;
+    }
+    .recado textarea::placeholder { color: rgba(74,63,66,.42); font-style: italic; }
+    .recado .apagar {
+      position: absolute;
+      top: 5px; right: 7px;
+      border: none;
+      background: none;
+      color: rgba(74,63,66,.34);
+      font-size: 1rem;
+      line-height: 1;
+      cursor: pointer;
+      opacity: 0;
+      transition: all .2s;
+      padding: 2px 4px;
+      border-radius: 4px;
+    }
+    .recado:hover .apagar { opacity: 1; }
+    .recado .apagar:hover { color: var(--terra); background: rgba(184,105,90,.12); }
+    .recado .data {
+      font-family: 'Courier Prime', monospace;
+      font-size: .6rem;
+      color: rgba(74,63,66,.42);
+      margin-top: 7px;
+      letter-spacing: .04em;
+    }
+    .mural-vazio {
+      text-align: center;
+      padding: 26px 14px;
+      border: 1.5px dashed var(--rose-pale);
+      border-radius: 11px;
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic;
+      font-size: .95rem;
+      color: var(--ink-soft);
+      line-height: 1.5;
+    }
+    .mural-rodape {
+      margin-top: 14px;
+      font-size: .64rem;
+      color: var(--ink-soft);
+      text-align: center;
+      line-height: 1.5;
+    }
 
     /* ── Cursor de coração ─────────────────────────────────────────── */
-    /* padrão: coração rosa */
     body, body * {
-      cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30' viewBox='0 0 32 32'%3E%3Cpath fill='%23f472b6' stroke='%23db2777' stroke-width='1.5' d='M16 28C16 28 3 19 3 10.5C3 6.4 6.4 3 10 3C12.6 3 14.7 4.5 16 6.9C17.3 4.5 19.4 3 22 3C25.6 3 29 6.4 29 10.5C29 19 16 28 16 28Z'/%3E%3C/svg%3E") 15 13, auto;
+      cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 32 32'%3E%3Cpath fill='%23e8ccd3' stroke='%23c47b8a' stroke-width='1.6' d='M16 27.5C16 27.5 3.5 18.8 3.5 10.6C3.5 6.6 6.7 3.4 10.2 3.4C12.7 3.4 14.8 4.9 16 7.2C17.2 4.9 19.3 3.4 21.8 3.4C25.3 3.4 28.5 6.6 28.5 10.6C28.5 18.8 16 27.5 16 27.5Z'/%3E%3C/svg%3E") 14 12, auto;
     }
-    /* sobre elementos clicáveis: coração vermelho maior */
     button, a, label, select, summary, [onclick], .drop-zone, .tab-btn,
-    input[type="radio"], input[type="checkbox"] {
-      cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='36' viewBox='0 0 32 32'%3E%3Cpath fill='%23f43f5e' stroke='%23fff' stroke-width='1.5' d='M16 28C16 28 3 19 3 10.5C3 6.4 6.4 3 10 3C12.6 3 14.7 4.5 16 6.9C17.3 4.5 19.4 3 22 3C25.6 3 29 6.4 29 10.5C29 19 16 28 16 28Z'/%3E%3C/svg%3E") 18 16, pointer;
+    input[type="radio"], input[type="checkbox"], .mode-card {
+      cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='34' height='34' viewBox='0 0 32 32'%3E%3Cpath fill='%23c47b8a' stroke='%23fff' stroke-width='1.8' d='M16 27.5C16 27.5 3.5 18.8 3.5 10.6C3.5 6.6 6.7 3.4 10.2 3.4C12.7 3.4 14.8 4.9 16 7.2C17.2 4.9 19.3 3.4 21.8 3.4C25.3 3.4 28.5 6.6 28.5 10.6C28.5 18.8 16 27.5 16 27.5Z'/%3E%3C/svg%3E") 17 15, pointer;
     }
-    /* coraçõezinhos que sobem ao clicar */
+    textarea { cursor: text !important; }
+
     .heart-pop {
       position: fixed; z-index: 9999; pointer-events: none;
-      font-size: 20px; transform: translate(-50%, -50%);
-      animation: heart-float 900ms ease-out forwards;
+      font-size: 17px; transform: translate(-50%, -50%);
+      animation: heart-float 1000ms ease-out forwards;
     }
     @keyframes heart-float {
-      0%   { opacity: 1; transform: translate(-50%, -50%) scale(0.5) rotate(0deg); }
-      100% { opacity: 0; transform: translate(-50%, -140px) scale(1.3) rotate(15deg); }
+      0%   { opacity: .9; transform: translate(-50%, -50%) scale(.4) rotate(0deg); }
+      100% { opacity: 0; transform: translate(-50%, -125px) scale(1.15) rotate(12deg); }
     }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+      .recado { transform: none !important; }
+    }
+    :focus-visible { outline: 2px solid var(--rose); outline-offset: 2px; }
+    .oculto { display: none !important; }
   </style>
 </head>
-<body class="min-h-screen flex items-center justify-center p-4">
+<body>
 
-  <div class="w-full max-w-xl space-y-5">
+<div class="atelier">
 
-    <!-- Header -->
-    <div class="text-center">
-      <div class="inline-flex items-center gap-2 mb-3">
-        <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="1.8">
-          <path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3z" stroke-linejoin="round"/>
-          <path d="M17.5 14v7M14 17.5h7" stroke-linecap="round"/>
-        </svg>
-        <span class="text-white font-bold text-xl tracking-tight">Meu Conversor CAD</span>
-      </div>
-      <p class="text-slate-400 text-sm">The JenArch · <span class="text-green-400 font-medium">Escritório de Arquitetura</span></p>
-    </div>
+  <!-- ══ PRANCHETA ══════════════════════════════════════════════════ -->
+  <main>
 
-    <!-- Abas -->
-    <div class="flex gap-2 border-b border-slate-700 pb-0">
-      <button id="tabImgBtn" onclick="switchTab('img')"
-        class="tab-btn px-4 py-2 text-sm font-semibold rounded-t-lg border-b-2 border-green-400 text-green-400 bg-slate-800">
-        Imagem → DXF
-      </button>
-      <button id="tabPatBtn" onclick="switchTab('pat')"
-        class="tab-btn px-4 py-2 text-sm font-semibold rounded-t-lg border-b-2 border-transparent text-slate-400 hover:text-slate-200">
-        DXF/Imagem → PAT
-      </button>
-      <button id="tabKmlBtn" onclick="switchTab('kml')"
-        class="tab-btn px-4 py-2 text-sm font-semibold rounded-t-lg border-b-2 border-transparent text-slate-400 hover:text-slate-200">
-        KML → DXF
-      </button>
-    </div>
+    <header class="marca">
+      <h1>Estúdio <em>CAD</em></h1>
+      <p class="assinatura">The JenArch · Arquitetura</p>
+    </header>
 
-    <!-- ABA: Imagem → DXF -->
-    <div id="tabImg">
+    <nav class="guias">
+      <button id="tabImgBtn" class="tab-btn ativa" onclick="switchTab('img')">Imagem → DXF</button>
+      <button id="tabPdfBtn" class="tab-btn" onclick="switchTab('pdf')">PDF → DXF</button>
+      <button id="tabPatBtn" class="tab-btn" onclick="switchTab('pat')">Padrão → PAT</button>
+      <button id="tabKmlBtn" class="tab-btn" onclick="switchTab('kml')">Terreno → DXF</button>
+    </nav>
 
-    <!-- Upload -->
-    <div id="dropZone" class="drop-zone rounded-xl p-6 text-center cursor-pointer" onclick="document.getElementById('fileInput').click()">
-      <input type="file" id="fileInput" accept="image/png,image/jpeg,image/jpg,image/bmp,image/tiff" class="hidden">
+    <!-- ── ABA: Imagem → DXF ──────────────────────────────────────── -->
+    <div id="tabImg" style="display:flex;flex-direction:column;gap:20px">
 
-      <div id="uploadPrompt">
-        <svg class="w-10 h-10 mx-auto mb-3 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
-        </svg>
-        <p class="text-slate-300 font-medium">Arraste uma imagem ou clique para selecionar</p>
-        <p class="text-slate-500 text-xs mt-1">PNG · JPG · BMP · TIFF</p>
+      <div id="dropZone" class="drop-zone" onclick="document.getElementById('fileInput').click()">
+        <input type="file" id="fileInput" accept="image/png,image/jpeg,image/jpg,image/bmp,image/tiff" class="oculto">
+        <div id="uploadPrompt">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#c47b8a" stroke-width="1.1"
+               style="margin:0 auto 10px;display:block">
+            <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1" stroke-linecap="round"/>
+            <path d="M12 15V4m0 0L8 8m4-4l4 4" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <p class="dica">Arraste sua imagem aqui</p>
+          <p class="formatos">PNG · JPG · BMP · TIFF</p>
+        </div>
+        <div id="previewArea" class="oculto" style="flex-direction:column;align-items:center;gap:8px">
+          <img id="previewImg" class="preview-img" alt="Pré-visualização da imagem enviada">
+          <p id="previewName" style="margin:0;font-weight:600;font-size:.82rem"></p>
+          <p id="previewSize" style="margin:0;font-size:.7rem;color:var(--ink-soft)"></p>
+          <button class="btn-suave" style="width:auto;padding:5px 14px"
+                  onclick="event.stopPropagation(); resetUpload()">Trocar imagem</button>
+        </div>
       </div>
 
-      <div id="previewArea" class="hidden flex-col items-center gap-2">
-        <img id="previewImg" class="preview-img" alt="preview">
-        <p id="previewName" class="text-slate-300 text-sm font-medium"></p>
-        <p id="previewSize" class="text-slate-500 text-xs"></p>
-        <button class="text-xs text-slate-500 hover:text-slate-300 underline mt-1"
-          onclick="event.stopPropagation(); resetUpload()">Trocar imagem</button>
-      </div>
-    </div>
-
-    <!-- Modos -->
-    <div>
-      <p class="text-slate-400 text-xs font-semibold uppercase tracking-widest mb-3">Modo de conversão</p>
-      <div class="grid grid-cols-3 gap-3">
-
-        <div class="mode-card rounded-xl p-4" data-mode="ia" onclick="selectMode(this)">
-          <div class="flex items-start justify-between mb-3">
-            <svg class="w-5 h-5 text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-              <path d="M12 2a4 4 0 014 4v1h1a3 3 0 010 6h-1v1a4 4 0 01-8 0v-1H7a3 3 0 010-6h1V6a4 4 0 014-4z" stroke-linejoin="round"/>
-              <circle cx="12" cy="12" r="2" fill="currentColor" stroke="none"/>
-            </svg>
+      <div>
+        <p class="rotulo">Como desenhar as linhas</p>
+        <div class="modos">
+          <div class="mode-card" data-mode="ia" onclick="selectMode(this)">
             <span class="mode-badge">IA</span>
+            <p class="nome">Fotografia</p>
+            <p class="uso">Foto, croqui, sombra ou papel amassado</p>
           </div>
-          <p class="text-white font-semibold text-sm">HED</p>
-          <p class="text-slate-400 text-xs mt-1">Foto, croqui, sombra, ruído</p>
-        </div>
-
-        <div class="mode-card rounded-xl p-4" data-mode="classico" onclick="selectMode(this)">
-          <div class="flex items-start justify-between mb-3">
-            <svg class="w-5 h-5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-              <rect x="3" y="3" width="18" height="18" rx="2"/>
-              <path d="M3 9h18M9 21V9" stroke-linecap="round"/>
-            </svg>
-            <span class="mode-badge">CLÁS</span>
+          <div class="mode-card" data-mode="classico" onclick="selectMode(this)">
+            <span class="mode-badge">OTSU</span>
+            <p class="nome">Escaneado</p>
+            <p class="uso">Planta escaneada com fundo branco</p>
           </div>
-          <p class="text-white font-semibold text-sm">Otsu</p>
-          <p class="text-slate-400 text-xs mt-1">Scan limpo, fundo branco</p>
-        </div>
-
-        <div class="mode-card selected rounded-xl p-4" data-mode="vetorial" onclick="selectMode(this)">
-          <div class="flex items-start justify-between mb-3">
-            <svg class="w-5 h-5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-              <path d="M4 20L10 8l4 6 3-4 3 10" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            <span class="mode-badge">VET</span>
+          <div class="mode-card selected" data-mode="vetorial" onclick="selectMode(this)">
+            <span class="mode-badge">VETOR</span>
+            <p class="nome">Digital</p>
+            <p class="uso">Render, captura de tela, imagem nítida</p>
           </div>
-          <p class="text-white font-semibold text-sm">Vetorial</p>
-          <p class="text-slate-400 text-xs mt-1">Render, screenshot, digital</p>
-        </div>
-
-      </div>
-    </div>
-
-    <!-- Nível de detalhe (só modo Otsu/Clássico) -->
-    <div id="nivelBox" class="hidden rounded-xl p-4 mt-1" style="background:var(--surface);border:1px solid var(--border)">
-      <div class="flex items-center justify-between mb-2">
-        <p class="text-slate-300 text-xs font-semibold">Nível de detalhe das linhas</p>
-        <span id="nivelVal" class="text-green-400 font-mono font-bold text-sm">7</span>
-      </div>
-      <input id="nivelRange" type="range" min="0" max="10" step="1" value="7"
-             oninput="document.getElementById('nivelVal').textContent = this.value"
-             class="w-full accent-green-400">
-      <div class="flex justify-between text-[11px] text-slate-500 mt-1">
-        <span>0 · simples (linhas retas)</span>
-        <span>10 · detalhado (segue curvas)</span>
-      </div>
-    </div>
-
-    <!-- Botão -->
-    <button id="convertBtn" class="btn-convert w-full text-white font-bold py-3.5 rounded-xl text-sm" onclick="convert()" disabled>
-      Converter para DXF
-    </button>
-
-    <!-- Loading -->
-    <div id="loading" class="hidden space-y-3">
-      <div class="pulse-bar"></div>
-      <p class="text-center text-slate-400 text-sm" id="loadingMsg">Processando vetores...</p>
-    </div>
-
-    <!-- Resultado -->
-    <div id="result" class="rounded-xl p-5 space-y-4" style="background:var(--surface);border:1px solid var(--border)">
-      <div class="flex items-center gap-2">
-        <svg class="w-5 h-5 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-        </svg>
-        <p class="text-white font-semibold text-sm">Conversão concluída</p>
-      </div>
-
-      <div class="grid grid-cols-3 gap-2" id="statsRow">
-        <div class="stat-chip">
-          <p class="text-green-400 font-bold text-lg" id="statPolylines">—</p>
-          <p class="text-slate-500 text-xs">polylines</p>
-        </div>
-        <div class="stat-chip">
-          <p class="text-green-400 font-bold text-lg" id="statSize">—</p>
-          <p class="text-slate-500 text-xs">tamanho</p>
-        </div>
-        <div class="stat-chip">
-          <p class="text-green-400 font-bold text-lg" id="statTime">—</p>
-          <p class="text-slate-500 text-xs">tempo</p>
         </div>
       </div>
 
-      <button id="downloadBtn" class="w-full py-3 rounded-xl font-bold text-sm text-slate-900"
-        style="background:var(--green)" onclick="triggerDownload()">
-        Baixar DXF
-      </button>
+      <div id="nivelBox" class="folha oculto">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:9px">
+          <p class="rotulo" style="margin:0">Nível de detalhe</p>
+          <span id="nivelVal" style="font-family:'Cormorant Garamond',serif;font-size:1.5rem;color:var(--terra);font-weight:600">7</span>
+        </div>
+        <input id="nivelRange" type="range" min="0" max="10" step="1" value="7"
+               oninput="document.getElementById('nivelVal').textContent = this.value">
+        <div style="display:flex;justify-content:space-between;font-size:.66rem;color:var(--ink-soft);margin-top:4px">
+          <span>traço simples</span><span>segue cada curva</span>
+        </div>
+      </div>
 
-      <button class="w-full py-2 rounded-xl text-xs text-slate-500 hover:text-slate-300 border border-slate-700"
-        onclick="resetAll()">Nova conversão</button>
-    </div>
+      <button id="convertBtn" class="btn-convert" onclick="convert()" disabled>Converter para DXF</button>
+
+      <div id="loading" class="oculto" style="display:flex;flex-direction:column;gap:10px">
+        <div class="pulse-bar"></div>
+        <p id="loadingMsg" style="text-align:center;font-family:'Cormorant Garamond',serif;font-style:italic;font-size:1.05rem;color:var(--ink-soft);margin:0">Analisando a imagem…</p>
+      </div>
+
+      <div id="result" class="folha" style="display:none">
+        <p style="font-family:'Cormorant Garamond',serif;font-size:1.3rem;font-style:italic;color:var(--sage);margin:0 0 14px">
+          Pronto — seu desenho está vetorizado
+        </p>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:16px" id="statsRow">
+          <div class="stat-chip"><p class="valor" id="statPolylines">—</p><p class="rot">polylines</p></div>
+          <div class="stat-chip"><p class="valor" id="statSize">—</p><p class="rot">tamanho</p></div>
+          <div class="stat-chip"><p class="valor" id="statTime">—</p><p class="rot">tempo</p></div>
+        </div>
+        <button id="downloadBtn" class="btn-baixar" onclick="triggerDownload()" style="margin-bottom:9px">Baixar DXF</button>
+        <button class="btn-suave" onclick="resetAll()">Converter outra imagem</button>
+      </div>
 
     </div><!-- /tabImg -->
 
-    <!-- ABA: DXF → PAT -->
-    <div id="tabPat" class="hidden space-y-5">
+    <!-- ── ABA: PDF → DXF ─────────────────────────────────────────── -->
+    <div id="tabPdf" class="oculto" style="flex-direction:column;gap:20px">
 
-      <div class="rounded-xl p-5 space-y-2" style="background:var(--surface);border:1px solid var(--border)">
-        <p class="text-green-400 font-semibold text-sm">O que é o arquivo .PAT?</p>
-        <p class="text-slate-400 text-xs leading-relaxed">
-          Padrão de hachura do AutoCAD. Gere a partir de um <b>DXF</b> ou direto de uma
-          <b>imagem</b> de padrão (piso, textura, tijolo). Como o PAT desenha só linhas,
-          use imagens em preto e branco / com traços nítidos — foto colorida vira ruído.
+      <div class="folha">
+        <p class="rotulo" style="margin-bottom:8px">Planta em PDF de volta para o CAD</p>
+        <p class="texto-nota" style="margin:0 0 10px">
+          Quando o PDF foi exportado de um CAD, o desenho continua lá dentro como
+          <b>vetor</b>. Aqui essas linhas são lidas uma a uma e reescritas em DXF —
+          sem foto, sem perder medida. As cores viram <b>layers</b> separadas e as
+          cotas voltam como texto editável.
+        </p>
+        <p class="texto-nota" style="margin:0;padding-top:10px;border-top:1px solid var(--line)">
+          <b>Sobre .dwg:</b> o formato é fechado da Autodesk e não pode ser gerado
+          por fora. Abra este DXF no AutoCAD e use <b>Salvar como → .dwg</b>:
+          o desenho é o mesmo.
         </p>
       </div>
 
-      <!-- Dicas de imagem -->
-      <details class="rounded-xl overflow-hidden" style="background:var(--surface);border:1px solid var(--border)" open>
-        <summary class="px-5 py-3 text-green-400 font-semibold text-sm select-none">
-          💡 Como escolher a melhor imagem
-        </summary>
-        <div class="px-5 pb-4 space-y-3 text-xs leading-relaxed">
+      <div id="dropZonePdf" class="drop-zone" onclick="document.getElementById('fileInputPdf').click()">
+        <input type="file" id="fileInputPdf" accept=".pdf,application/pdf" class="oculto">
+        <div id="uploadPromptPdf">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#c47b8a" stroke-width="1.1" style="margin:0 auto 10px;display:block">
+            <path d="M14 2.5H7a2 2 0 00-2 2v15a2 2 0 002 2h10a2 2 0 002-2V7.5z" stroke-linejoin="round"/>
+            <path d="M14 2.5v5h5" stroke-linejoin="round"/>
+            <path d="M8.5 13h7M8.5 16.5h4.5" stroke-linecap="round" opacity=".6"/>
+          </svg>
+          <p class="dica">Arraste a planta em PDF</p>
+          <p class="formatos">PDF exportado do CAD</p>
+        </div>
+        <div id="previewAreaPdf" class="oculto" style="flex-direction:column;align-items:center;gap:7px">
+          <p id="previewNamePdf" style="margin:0;font-weight:600;font-size:.82rem"></p>
+          <p id="previewSizePdf" style="margin:0;font-size:.7rem;color:var(--ink-soft)"></p>
+          <button class="btn-suave" style="width:auto;padding:5px 14px"
+                  onclick="event.stopPropagation(); resetPdf()">Trocar arquivo</button>
+        </div>
+      </div>
+
+      <div id="pdfOpcoes" class="folha oculto">
+        <div id="pdfPaginaBox" class="oculto" style="margin-bottom:14px">
+          <label for="pdfPagina" class="rotulo" style="display:block">Qual página converter</label>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input id="pdfPagina" type="number" value="1" min="1" step="1" style="width:74px">
+            <span id="pdfTotalPag" style="font-size:.74rem;color:var(--ink-soft)"></span>
+          </div>
+        </div>
+        <label style="display:flex;align-items:center;gap:9px;font-size:.8rem;cursor:pointer">
+          <input type="checkbox" id="pdfTexto" checked style="accent-color:var(--rose);width:16px;height:16px">
+          Trazer as cotas e legendas como texto editável
+        </label>
+      </div>
+
+      <button id="convertPdfBtn" class="btn-convert" onclick="convertPdf()" disabled>Converter para DXF</button>
+
+      <div id="loadingPdf" class="oculto" style="display:flex;flex-direction:column;gap:10px">
+        <div class="pulse-bar"></div>
+        <p style="text-align:center;font-family:'Cormorant Garamond',serif;font-style:italic;font-size:1.05rem;color:var(--ink-soft);margin:0">Lendo os vetores da planta…</p>
+      </div>
+
+      <div id="resultPdf" class="folha oculto">
+        <p style="font-family:'Cormorant Garamond',serif;font-size:1.3rem;font-style:italic;color:var(--sage);margin:0 0 14px">
+          Planta vetorizada
+        </p>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:14px">
+          <div class="stat-chip"><p class="valor" id="statEntPdf">—</p><p class="rot">entidades</p></div>
+          <div class="stat-chip"><p class="valor" id="statLayersPdf">—</p><p class="rot">layers</p></div>
+          <div class="stat-chip"><p class="valor" id="statTextosPdf">—</p><p class="rot">textos</p></div>
+        </div>
+        <p class="texto-nota" style="margin:0 0 12px">
+          Prancha de <span id="statFormatoPdf" style="font-family:'Courier Prime',monospace">—</span>,
+          desenhada em milímetros. No AutoCAD, <b>Salvar como → .dwg</b> se precisar do formato.
+        </p>
+        <button class="btn-baixar" onclick="downloadPdf()" style="margin-bottom:9px">Baixar DXF</button>
+        <button class="btn-suave" onclick="resetPdf()">Converter outra planta</button>
+      </div>
+
+    </div><!-- /tabPdf -->
+
+    <!-- ── ABA: PAT ───────────────────────────────────────────────── -->
+    <div id="tabPat" class="oculto" style="flex-direction:column;gap:20px">
+
+      <div class="folha">
+        <p class="rotulo" style="margin-bottom:8px">O que é um arquivo .PAT</p>
+        <p class="texto-nota" style="margin:0">
+          É a hachura do AutoCAD — a textura que preenche uma área: piso, tijolo,
+          deck, pedra. Você monta a partir de um <b>DXF</b> ou de uma <b>imagem</b> do
+          padrão. Como a hachura desenha apenas linhas, use imagens em preto e branco
+          com traço nítido: foto colorida vira ruído.
+        </p>
+      </div>
+
+      <details open>
+        <summary>Como escolher a melhor imagem</summary>
+        <div style="padding:0 18px 16px;display:flex;flex-direction:column;gap:13px">
           <div>
-            <p class="text-slate-200 font-semibold mb-1">✅ Funciona muito bem</p>
-            <ul class="text-slate-400 space-y-1 list-disc list-inside">
-              <li><b>PNG</b> em <b>preto e branco</b> (linhas pretas, fundo branco)</li>
-              <li>Traços nítidos e bem definidos — desenho de piso, tijolo, textura</li>
-              <li>Resolução boa: entre <b>800 e 1500 px</b></li>
-              <li>Melhor ainda: um <b>DXF</b> ou <b>SVG</b> (desenho vetorial exato)</li>
+            <p style="font-weight:700;font-size:.76rem;margin:0 0 4px;color:var(--sage)">Funciona muito bem</p>
+            <ul class="texto-nota" style="margin:0;padding-left:17px">
+              <li><b>PNG</b> em preto e branco — linhas pretas, fundo branco</li>
+              <li>Traço nítido: desenho de piso, tijolo, textura</li>
+              <li>Entre <b>800 e 1500 px</b></li>
+              <li>Melhor ainda: um <b>DXF</b> ou <b>SVG</b>, que já são vetor</li>
             </ul>
           </div>
           <div>
-            <p class="text-slate-200 font-semibold mb-1">⚠️ Evite</p>
-            <ul class="text-slate-400 space-y-1 list-disc list-inside">
-              <li><b>JPEG</b> — a compressão cria sujeira cinza e o padrão fica com pontinhos</li>
-              <li>Foto colorida ou com sombra — vira ruído (se precisar, use o modo <b>Bordas</b>)</li>
-              <li>Imagem muito pequena ou borrada — perde os detalhes</li>
+            <p style="font-weight:700;font-size:.76rem;margin:0 0 4px;color:var(--terra)">Evite</p>
+            <ul class="texto-nota" style="margin:0;padding-left:17px">
+              <li><b>JPEG</b> — a compressão deixa sujeira cinza no padrão</li>
+              <li>Foto colorida ou com sombra — use o modo <b>Bordas</b> se precisar</li>
+              <li>Imagem pequena ou borrada — perde o detalhe</li>
             </ul>
           </div>
           <div>
-            <p class="text-slate-200 font-semibold mb-1">🔁 Se o padrão vai se repetir</p>
-            <p class="text-slate-400">
-              Use uma imagem <b>sem emenda</b> (as bordas de cima casam com as de baixo,
-              e esquerda com direita). Assim a hachura repete sem aparecer linha de junção.
-            </p>
-          </div>
-          <div>
-            <p class="text-slate-200 font-semibold mb-1">🎚️ Modos</p>
-            <p class="text-slate-400">
-              <b>Automático</b> serve na maioria dos casos ·
-              <b>Traços P&B</b> para desenho em preto e branco ·
-              <b>Bordas (foto)</b> para extrair contornos de uma foto/render.
+            <p style="font-weight:700;font-size:.76rem;margin:0 0 4px;color:var(--ink)">Se o padrão vai repetir</p>
+            <p class="texto-nota" style="margin:0">
+              Use uma imagem sem emenda: a borda de cima casa com a de baixo, a
+              esquerda com a direita. Assim a hachura repete sem mostrar a costura.
             </p>
           </div>
         </div>
       </details>
 
-      <!-- Modo (só afeta imagem) -->
-      <div id="patModoBox" class="hidden rounded-xl p-3" style="background:var(--surface);border:1px solid var(--border)">
-        <p class="text-slate-400 text-xs mb-2">Modo (para imagem):</p>
-        <div class="grid grid-cols-3 gap-2 text-xs">
-          <label class="cursor-pointer">
-            <input type="radio" name="patModo" value="auto" checked class="peer hidden">
-            <div class="stat-chip peer-checked:border-green-400 peer-checked:text-green-400 text-slate-400 text-center py-2">Automático</div>
-          </label>
-          <label class="cursor-pointer">
-            <input type="radio" name="patModo" value="tracos" class="peer hidden">
-            <div class="stat-chip peer-checked:border-green-400 peer-checked:text-green-400 text-slate-400 text-center py-2">Traços P&B</div>
-          </label>
-          <label class="cursor-pointer">
-            <input type="radio" name="patModo" value="linhas" class="peer hidden">
-            <div class="stat-chip peer-checked:border-green-400 peer-checked:text-green-400 text-slate-400 text-center py-2">Bordas (foto)</div>
-          </label>
+      <div id="patModoBox" class="folha oculto">
+        <p class="rotulo">Como ler a imagem</p>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+          <label class="escolha"><input type="radio" name="patModo" value="auto" checked class="oculto"><div class="opcao">Automático</div></label>
+          <label class="escolha"><input type="radio" name="patModo" value="tracos" class="oculto"><div class="opcao">Traço P&B</div></label>
+          <label class="escolha"><input type="radio" name="patModo" value="linhas" class="oculto"><div class="opcao">Bordas</div></label>
         </div>
       </div>
 
-      <!-- Upload DXF -->
-      <div id="dropZonePat" class="drop-zone rounded-xl p-6 text-center cursor-pointer"
-           onclick="document.getElementById('fileInputPat').click()">
-        <input type="file" id="fileInputPat" accept=".dxf,.svg,image/svg+xml,image/png,image/jpeg,image/jpg,image/bmp,image/tiff,image/webp" class="hidden">
+      <div id="dropZonePat" class="drop-zone" onclick="document.getElementById('fileInputPat').click()">
+        <input type="file" id="fileInputPat" accept=".dxf,.svg,image/svg+xml,image/png,image/jpeg,image/jpg,image/bmp,image/tiff,image/webp" class="oculto">
         <div id="uploadPromptPat">
-          <svg class="w-10 h-10 mx-auto mb-3 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#c47b8a" stroke-width="1.1" style="margin:0 auto 10px;display:block">
+            <path d="M3 3h18v18H3z" stroke-linejoin="round"/>
+            <path d="M3 9h18M3 15h18M9 3v18M15 3v18" stroke-linecap="round" opacity=".55"/>
           </svg>
-          <p class="text-slate-300 font-medium">Arraste um .DXF, .SVG ou imagem, ou clique para selecionar</p>
-          <p class="text-slate-500 text-xs mt-1">.DXF · .SVG · PNG · JPG · imagem de padrão em preto e branco</p>
+          <p class="dica">Arraste o DXF, SVG ou a imagem do padrão</p>
+          <p class="formatos">DXF · SVG · PNG · JPG</p>
         </div>
-        <div id="previewAreaPat" class="hidden flex-col items-center gap-2">
-          <svg class="w-12 h-12 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-          </svg>
-          <p id="previewNamePat" class="text-slate-300 text-sm font-medium"></p>
-          <p id="previewSizePat" class="text-slate-500 text-xs"></p>
-          <button class="text-xs text-slate-500 hover:text-slate-300 underline mt-1"
-            onclick="event.stopPropagation(); resetPat()">Trocar arquivo</button>
+        <div id="previewAreaPat" class="oculto" style="flex-direction:column;align-items:center;gap:7px">
+          <p id="previewNamePat" style="margin:0;font-weight:600;font-size:.82rem"></p>
+          <p id="previewSizePat" style="margin:0;font-size:.7rem;color:var(--ink-soft)"></p>
+          <button class="btn-suave" style="width:auto;padding:5px 14px"
+                  onclick="event.stopPropagation(); resetPat()">Trocar arquivo</button>
         </div>
       </div>
 
-      <button id="convertPatBtn" class="btn-convert w-full text-white font-bold py-3.5 rounded-xl text-sm"
-              onclick="convertPat()" disabled>
-        Gerar arquivo .PAT
-      </button>
+      <button id="convertPatBtn" class="btn-convert" onclick="convertPat()" disabled>Gerar hachura .PAT</button>
 
-      <div id="loadingPat" class="hidden space-y-3">
+      <div id="loadingPat" class="oculto" style="display:flex;flex-direction:column;gap:10px">
         <div class="pulse-bar"></div>
-        <p class="text-center text-slate-400 text-sm">Analisando padrões de linha...</p>
+        <p style="text-align:center;font-family:'Cormorant Garamond',serif;font-style:italic;font-size:1.05rem;color:var(--ink-soft);margin:0">Lendo o padrão linha por linha…</p>
       </div>
 
-      <div id="resultPat" class="hidden rounded-xl p-5 space-y-4" style="background:var(--surface);border:1px solid var(--border)">
-        <div class="flex items-center gap-2">
-          <svg class="w-5 h-5 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-          </svg>
-          <p class="text-white font-semibold text-sm">Padrão gerado com sucesso</p>
+      <div id="resultPat" class="folha oculto">
+        <p style="font-family:'Cormorant Garamond',serif;font-size:1.3rem;font-style:italic;color:var(--sage);margin:0 0 14px">
+          Hachura pronta
+        </p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:14px">
+          <div class="stat-chip"><p class="valor" id="statFamilies">—</p><p class="rot">famílias de linha</p></div>
+          <div class="stat-chip"><p class="valor" id="statSegsPat">—</p><p class="rot">segmentos lidos</p></div>
         </div>
-        <div class="grid grid-cols-2 gap-2">
-          <div class="stat-chip">
-            <p class="text-green-400 font-bold text-lg" id="statFamilies">—</p>
-            <p class="text-slate-500 text-xs">famílias de linhas</p>
-          </div>
-          <div class="stat-chip">
-            <p class="text-green-400 font-bold text-lg" id="statSegsPat">—</p>
-            <p class="text-slate-500 text-xs">segmentos lidos</p>
-          </div>
-        </div>
-        <div id="patScaleBox" class="hidden rounded-lg p-3 space-y-3" style="background:#0f172a;border:1px solid var(--border)">
-          <p class="text-slate-300 text-xs">📐 Calcule a escala da hachura no AutoCAD:</p>
-          <div class="flex items-end gap-2 flex-wrap">
+
+        <div id="patScaleBox" class="oculto" style="background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px">
+          <p class="rotulo">Escala da hachura no AutoCAD</p>
+          <div style="display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;margin-bottom:11px">
             <div>
-              <label class="text-slate-500 text-[11px] block mb-1">Tamanho do padrão</label>
-              <div class="flex items-center gap-1">
-                <input id="scaleSize" type="number" value="60" min="0.1" step="1"
-                       oninput="calcScale()"
-                       class="w-16 bg-slate-800 text-white text-sm rounded px-2 py-1.5 border border-slate-700 outline-none focus:border-green-400">
-                <span class="text-slate-400 text-xs">cm</span>
+              <label for="scaleSize" style="font-size:.66rem;color:var(--ink-soft);display:block;margin-bottom:3px">Tamanho do padrão</label>
+              <div style="display:flex;align-items:center;gap:5px">
+                <input id="scaleSize" type="number" value="60" min="0.1" step="1" oninput="calcScale()" style="width:68px">
+                <span style="font-size:.74rem;color:var(--ink-soft)">cm</span>
               </div>
             </div>
             <div>
-              <label class="text-slate-500 text-[11px] block mb-1">Unidade do desenho</label>
-              <select id="scaleUnit" onchange="calcScale()"
-                      class="bg-slate-800 text-white text-sm rounded px-2 py-1.5 border border-slate-700 outline-none focus:border-green-400">
+              <label for="scaleUnit" style="font-size:.66rem;color:var(--ink-soft);display:block;margin-bottom:3px">Unidade do desenho</label>
+              <select id="scaleUnit" onchange="calcScale()">
                 <option value="m">Metros</option>
                 <option value="cm" selected>Centímetros</option>
                 <option value="mm">Milímetros</option>
               </select>
             </div>
           </div>
-          <div class="flex items-center justify-between rounded-lg px-3 py-2" style="background:#0b1220;border:1px solid var(--border)">
-            <span class="text-slate-400 text-xs">Use esta <b>Escala</b> na hachura:</span>
-            <span id="scaleResult" class="text-green-400 font-mono font-bold text-base">—</span>
+          <div style="display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid var(--line);border-radius:8px;padding:9px 13px">
+            <span style="font-size:.75rem;color:var(--ink-soft)">Use esta escala:</span>
+            <span id="scaleResult" style="font-family:'Cormorant Garamond',serif;font-size:1.5rem;font-weight:600;color:var(--terra)">—</span>
           </div>
-          <p class="text-slate-500 text-[11px] leading-relaxed">
-            1 azulejo do padrão = <span id="statTile" class="text-slate-400 font-mono">—</span> unidades ·
-            padrão pequeno demais = aumente a escala; grande demais = diminua.
+          <p style="font-size:.66rem;color:var(--ink-soft);margin:8px 0 0;line-height:1.5">
+            Um azulejo do padrão mede <span id="statTile" style="font-family:'Courier Prime',monospace">—</span> unidades.
+            Padrão pequeno demais, aumente a escala; grande demais, diminua.
           </p>
         </div>
-        <p class="text-slate-400 text-xs">
-          Para usar no AutoCAD: copie o .PAT para a pasta de suporte do AutoCAD
-          e use o comando <span class="text-green-400 font-mono">HATCH</span> → escolha o padrão pelo nome do arquivo.
+
+        <p class="texto-nota" style="margin:0 0 12px">
+          No AutoCAD: copie o .PAT para a pasta de suporte, use o comando
+          <b style="font-family:'Courier Prime',monospace">HATCH</b> e escolha o padrão pelo nome do arquivo.
         </p>
-        <button class="w-full py-3 rounded-xl font-bold text-sm text-slate-900"
-                style="background:var(--green)" onclick="downloadPat()">
-          Baixar .PAT
-        </button>
-        <button class="w-full py-2 rounded-xl text-xs text-slate-500 hover:text-slate-300 border border-slate-700"
-                onclick="resetPat()">Novo arquivo</button>
+        <button class="btn-baixar" onclick="downloadPat()" style="margin-bottom:9px">Baixar .PAT</button>
+        <button class="btn-suave" onclick="resetPat()">Gerar outro padrão</button>
       </div>
 
     </div><!-- /tabPat -->
 
-    <!-- ABA: KML → DXF -->
-    <div id="tabKml" class="hidden space-y-5">
+    <!-- ── ABA: KML ───────────────────────────────────────────────── -->
+    <div id="tabKml" class="oculto" style="flex-direction:column;gap:20px">
 
-      <div class="rounded-xl p-5 space-y-2" style="background:var(--surface);border:1px solid var(--border)">
-        <p class="text-green-400 font-semibold text-sm">KML/KMZ → DXF georreferenciado</p>
-        <p class="text-slate-400 text-xs leading-relaxed">
-          Converte arquivos do <b>Google Earth</b> (.kml/.kmz) em DXF, projetando
-          lat/long para <b>UTM em metros</b>. Pontos, linhas e polígonos viram
-          layers com o nome de cada local. No AutoCAD, abra o DXF e use
-          <b>Salvar como → .dwg</b> se precisar.
+      <div class="folha">
+        <p class="rotulo" style="margin-bottom:8px">Do Google Earth para a prancheta</p>
+        <p class="texto-nota" style="margin:0">
+          Converte arquivos <b>.kml</b> e <b>.kmz</b> em DXF, transformando latitude e
+          longitude em <b>metros (UTM)</b>. Cada local marcado vira uma layer com o
+          próprio nome. No AutoCAD, abra o DXF e use <b>Salvar como → .dwg</b> se precisar.
         </p>
       </div>
 
-      <!-- Upload KML -->
-      <div id="dropZoneKml" class="drop-zone rounded-xl p-6 text-center cursor-pointer"
-           onclick="document.getElementById('fileInputKml').click()">
-        <input type="file" id="fileInputKml" accept=".kml,.kmz,application/vnd.google-earth.kml+xml,application/vnd.google-earth.kmz" class="hidden">
+      <div id="dropZoneKml" class="drop-zone" onclick="document.getElementById('fileInputKml').click()">
+        <input type="file" id="fileInputKml" accept=".kml,.kmz,application/vnd.google-earth.kml+xml,application/vnd.google-earth.kmz" class="oculto">
         <div id="uploadPromptKml">
-          <svg class="w-10 h-10 mx-auto mb-3 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7z"/>
-            <circle cx="12" cy="9" r="2.5"/>
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#c47b8a" stroke-width="1.1" style="margin:0 auto 10px;display:block">
+            <path d="M12 2.5C8.4 2.5 5.5 5.4 5.5 9c0 4.8 6.5 12.5 6.5 12.5S18.5 13.8 18.5 9c0-3.6-2.9-6.5-6.5-6.5z" stroke-linejoin="round"/>
+            <circle cx="12" cy="9" r="2.4"/>
           </svg>
-          <p class="text-slate-300 font-medium">Arraste um .KML ou .KMZ, ou clique para selecionar</p>
-          <p class="text-slate-500 text-xs mt-1">Google Earth · pontos, linhas e polígonos</p>
+          <p class="dica">Arraste o arquivo do Google Earth</p>
+          <p class="formatos">KML · KMZ</p>
         </div>
-        <div id="previewAreaKml" class="hidden flex-col items-center gap-2">
-          <svg class="w-12 h-12 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
-          </svg>
-          <p id="previewNameKml" class="text-slate-300 text-sm font-medium"></p>
-          <p id="previewSizeKml" class="text-slate-500 text-xs"></p>
-          <button class="text-xs text-slate-500 hover:text-slate-300 underline mt-1"
-            onclick="event.stopPropagation(); resetKml()">Trocar arquivo</button>
+        <div id="previewAreaKml" class="oculto" style="flex-direction:column;align-items:center;gap:7px">
+          <p id="previewNameKml" style="margin:0;font-weight:600;font-size:.82rem"></p>
+          <p id="previewSizeKml" style="margin:0;font-size:.7rem;color:var(--ink-soft)"></p>
+          <button class="btn-suave" style="width:auto;padding:5px 14px"
+                  onclick="event.stopPropagation(); resetKml()">Trocar arquivo</button>
         </div>
       </div>
 
-      <!-- Sistema de coordenadas -->
-      <div class="rounded-xl p-3" style="background:var(--surface);border:1px solid var(--border)">
-        <p class="text-slate-400 text-xs mb-2">Coordenadas do DXF:</p>
-        <div class="grid grid-cols-2 gap-2 text-xs">
-          <label class="cursor-pointer">
-            <input type="radio" name="kmlCoord" value="utm" checked class="peer hidden">
-            <div class="stat-chip peer-checked:border-green-400 peer-checked:text-green-400 text-slate-400 text-center py-2">UTM real (GPS)</div>
-          </label>
-          <label class="cursor-pointer">
-            <input type="radio" name="kmlCoord" value="local" class="peer hidden">
-            <div class="stat-chip peer-checked:border-green-400 peer-checked:text-green-400 text-slate-400 text-center py-2">Local (0,0)</div>
-          </label>
+      <div class="folha">
+        <p class="rotulo">Onde posicionar o desenho</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:9px">
+          <label class="escolha"><input type="radio" name="kmlCoord" value="utm" checked class="oculto"><div class="opcao">Coordenada real</div></label>
+          <label class="escolha"><input type="radio" name="kmlCoord" value="local" class="oculto"><div class="opcao">Na origem (0,0)</div></label>
         </div>
-        <p class="text-slate-500 text-[11px] mt-2 leading-relaxed">
-          <b>UTM real</b>: georreferenciado, bate com levantamento/GPS ·
-          <b>Local</b>: desenho perto da origem, mesmas medidas.
+        <p class="texto-nota" style="margin:0">
+          <b>Coordenada real</b> mantém o georreferenciamento, batendo com o levantamento
+          topográfico. <b>Na origem</b> traz o desenho para perto do zero, com as mesmas medidas.
         </p>
       </div>
 
-      <button id="convertKmlBtn" class="btn-convert w-full text-white font-bold py-3.5 rounded-xl text-sm"
-              onclick="convertKml()" disabled>
-        Gerar DXF
-      </button>
+      <button id="convertKmlBtn" class="btn-convert" onclick="convertKml()" disabled>Gerar DXF do terreno</button>
 
-      <div id="loadingKml" class="hidden space-y-3">
+      <div id="loadingKml" class="oculto" style="display:flex;flex-direction:column;gap:10px">
         <div class="pulse-bar"></div>
-        <p class="text-center text-slate-400 text-sm">Projetando coordenadas (UTM)...</p>
+        <p style="text-align:center;font-family:'Cormorant Garamond',serif;font-style:italic;font-size:1.05rem;color:var(--ink-soft);margin:0">Projetando as coordenadas…</p>
       </div>
 
-      <div id="resultKml" class="hidden rounded-xl p-5 space-y-4" style="background:var(--surface);border:1px solid var(--border)">
-        <div class="flex items-center gap-2">
-          <svg class="w-5 h-5 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-          </svg>
-          <p class="text-white font-semibold text-sm">DXF gerado com sucesso</p>
+      <div id="resultKml" class="folha oculto">
+        <p style="font-family:'Cormorant Garamond',serif;font-size:1.3rem;font-style:italic;color:var(--sage);margin:0 0 14px">
+          Terreno desenhado
+        </p>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:16px">
+          <div class="stat-chip"><p class="valor" id="statPlace">—</p><p class="rot">locais</p></div>
+          <div class="stat-chip"><p class="valor" id="statEnt">—</p><p class="rot">geometrias</p></div>
+          <div class="stat-chip"><p class="valor" id="statZona" style="font-size:1.1rem">—</p><p class="rot">zona UTM</p></div>
         </div>
-        <div class="grid grid-cols-3 gap-2">
-          <div class="stat-chip">
-            <p class="text-green-400 font-bold text-lg" id="statPlace">—</p>
-            <p class="text-slate-500 text-xs">locais</p>
-          </div>
-          <div class="stat-chip">
-            <p class="text-green-400 font-bold text-lg" id="statEnt">—</p>
-            <p class="text-slate-500 text-xs">geometrias</p>
-          </div>
-          <div class="stat-chip">
-            <p class="text-green-400 font-bold text-sm" id="statZona">—</p>
-            <p class="text-slate-500 text-xs">zona UTM</p>
-          </div>
-        </div>
-        <button class="w-full py-3 rounded-xl font-bold text-sm text-slate-900"
-                style="background:var(--green)" onclick="downloadKml()">
-          Baixar .DXF
-        </button>
-        <button class="w-full py-2 rounded-xl text-xs text-slate-500 hover:text-slate-300 border border-slate-700"
-                onclick="resetKml()">Novo arquivo</button>
+        <button class="btn-baixar" onclick="downloadKml()" style="margin-bottom:9px">Baixar DXF</button>
+        <button class="btn-suave" onclick="resetKml()">Converter outro terreno</button>
       </div>
 
     </div><!-- /tabKml -->
 
-  </div>
+  </main>
+
+  <!-- ══ MURAL DE RECADOS ═══════════════════════════════════════════ -->
+  <aside class="mural">
+    <div class="mural-topo">
+      <h2>Recados</h2>
+      <button class="btn-novo-recado" onclick="novoRecado()">+ Novo</button>
+    </div>
+    <div id="recados" class="recados"></div>
+    <p class="mural-rodape">Salvo neste computador, sempre que você escreve.</p>
+  </aside>
+
+</div>
 
   <script>
     let selectedMode = 'vetorial';
@@ -493,18 +899,114 @@
 
     // ── Troca de abas ─────────────────────────────────────────────────────────
     function switchTab(tab) {
-      const tabs = ['img', 'pat', 'kml'];
-      const ids  = { img: 'tabImg', pat: 'tabPat', kml: 'tabKml' };
-      const btns = { img: 'tabImgBtn', pat: 'tabPatBtn', kml: 'tabKmlBtn' };
+      const tabs = ['img', 'pdf', 'pat', 'kml'];
+      const ids  = { img: 'tabImg', pdf: 'tabPdf', pat: 'tabPat', kml: 'tabKml' };
+      const btns = { img: 'tabImgBtn', pdf: 'tabPdfBtn', pat: 'tabPatBtn', kml: 'tabKmlBtn' };
       tabs.forEach(t => {
-        document.getElementById(ids[t]).classList.toggle('hidden', tab !== t);
-        const b = document.getElementById(btns[t]);
-        b.classList.toggle('border-green-400', tab === t);
-        b.classList.toggle('text-green-400', tab === t);
-        b.classList.toggle('bg-slate-800', tab === t);
-        b.classList.toggle('border-transparent', tab !== t);
-        b.classList.toggle('text-slate-400', tab !== t);
+        const painel = document.getElementById(ids[t]);
+        const ativo = (tab === t);
+        painel.classList.toggle('oculto', !ativo);
+        if (ativo) painel.style.display = 'flex';
+        document.getElementById(btns[t]).classList.toggle('ativa', ativo);
       });
+    }
+
+    // ── Aba PDF → DXF ─────────────────────────────────────────────────────────
+    let pdfFile = null, pdfBlob = null, pdfFilename = '';
+
+    const dzPdf = document.getElementById('dropZonePdf');
+    dzPdf.addEventListener('dragover', e => { e.preventDefault(); dzPdf.classList.add('drag-over'); });
+    dzPdf.addEventListener('dragleave', () => dzPdf.classList.remove('drag-over'));
+    dzPdf.addEventListener('drop', e => {
+      e.preventDefault(); dzPdf.classList.remove('drag-over');
+      if (e.dataTransfer.files[0]) setPdfFile(e.dataTransfer.files[0]);
+    });
+    document.getElementById('fileInputPdf').addEventListener('change', e => {
+      if (e.target.files[0]) setPdfFile(e.target.files[0]);
+    });
+
+    async function setPdfFile(f) {
+      if (!f.name.toLowerCase().endsWith('.pdf')) { alert('Selecione um arquivo .PDF'); return; }
+      pdfFile = f;
+      document.getElementById('previewNamePdf').textContent = f.name;
+      document.getElementById('previewSizePdf').textContent = (f.size / 1024).toFixed(0) + ' KB';
+      document.getElementById('uploadPromptPdf').classList.add('oculto');
+      const pv = document.getElementById('previewAreaPdf');
+      pv.classList.remove('oculto'); pv.style.display = 'flex';
+      document.getElementById('pdfOpcoes').classList.remove('oculto');
+      document.getElementById('convertPdfBtn').disabled = false;
+
+      // pergunta ao servidor quantas paginas tem; so oferece a escolha se houver mais de uma
+      const caixa = document.getElementById('pdfPaginaBox');
+      caixa.classList.add('oculto');
+      try {
+        const fd = new FormData(); fd.append('file', f);
+        const r = await fetch('/pdf-info', { method: 'POST', body: fd });
+        if (r.ok) {
+          const { paginas } = await r.json();
+          if (paginas > 1) {
+            const campo = document.getElementById('pdfPagina');
+            campo.max = paginas; campo.value = 1;
+            document.getElementById('pdfTotalPag').textContent = `de ${paginas} páginas`;
+            caixa.classList.remove('oculto');
+          }
+        }
+      } catch (e) { /* segue com a primeira pagina */ }
+    }
+
+    function resetPdf() {
+      pdfFile = null; pdfBlob = null;
+      document.getElementById('fileInputPdf').value = '';
+      document.getElementById('uploadPromptPdf').classList.remove('oculto');
+      const pv = document.getElementById('previewAreaPdf');
+      pv.classList.add('oculto'); pv.style.display = 'none';
+      document.getElementById('pdfOpcoes').classList.add('oculto');
+      document.getElementById('pdfPaginaBox').classList.add('oculto');
+      document.getElementById('convertPdfBtn').disabled = true;
+      document.getElementById('resultPdf').classList.add('oculto');
+    }
+
+    async function convertPdf() {
+      if (!pdfFile) return;
+      document.getElementById('convertPdfBtn').disabled = true;
+      const ld = document.getElementById('loadingPdf');
+      ld.classList.remove('oculto'); ld.style.display = 'flex';
+      document.getElementById('resultPdf').classList.add('oculto');
+
+      const pagina = (parseInt(document.getElementById('pdfPagina').value, 10) || 1) - 1;
+      const texto = document.getElementById('pdfTexto').checked;
+      const fd = new FormData();
+      fd.append('file', pdfFile);
+
+      try {
+        const res = await fetch(`/convert-pdf?pagina=${pagina}&texto=${texto}`,
+                                { method: 'POST', body: fd });
+        if (!res.ok) { let d; try { d = (await res.json()).detail; } catch (e) {} throw new Error(d || res.status); }
+
+        pdfBlob = await res.blob();
+        const cd = res.headers.get('content-disposition') || '';
+        pdfFilename = cd.match(/filename="?([^"]+)"?/)?.[1] || 'planta.dxf';
+
+        document.getElementById('statEntPdf').textContent     = res.headers.get('X-Entidades') || '—';
+        document.getElementById('statLayersPdf').textContent   = res.headers.get('X-Layers') || '—';
+        document.getElementById('statTextosPdf').textContent   = res.headers.get('X-Textos') || '—';
+        document.getElementById('statFormatoPdf').textContent  = res.headers.get('X-Formato') || '—';
+
+        ld.classList.add('oculto'); ld.style.display = 'none';
+        document.getElementById('resultPdf').classList.remove('oculto');
+      } catch (err) {
+        ld.classList.add('oculto'); ld.style.display = 'none';
+        document.getElementById('convertPdfBtn').disabled = false;
+        alert('Não consegui converter: ' + err.message);
+      }
+    }
+
+    function downloadPdf() {
+      if (!pdfBlob) return;
+      const url = URL.createObjectURL(pdfBlob);
+      const a = document.createElement('a');
+      a.href = url; a.download = pdfFilename; a.click();
+      URL.revokeObjectURL(url);
     }
 
     // ── Aba PAT ───────────────────────────────────────────────────────────────
@@ -548,29 +1050,31 @@
       patFile = f;
       document.getElementById('previewNamePat').textContent = f.name;
       document.getElementById('previewSizePat').textContent = (f.size / 1024).toFixed(0) + ' KB';
-      document.getElementById('uploadPromptPat').classList.add('hidden');
-      document.getElementById('previewAreaPat').classList.remove('hidden');
-      document.getElementById('previewAreaPat').classList.add('flex');
+      document.getElementById('uploadPromptPat').classList.add('oculto');
+      const pv = document.getElementById('previewAreaPat');
+      pv.classList.remove('oculto'); pv.style.display = 'flex';
       // mostra seletor de modo para imagem e SVG (ambos rasterizam)
-      document.getElementById('patModoBox').classList.toggle('hidden', !(isImg || isSvg));
+      document.getElementById('patModoBox').classList.toggle('oculto', !(isImg || isSvg));
       document.getElementById('convertPatBtn').disabled = false;
     }
 
     function resetPat() {
       patFile = null; patBlob = null;
       document.getElementById('fileInputPat').value = '';
-      document.getElementById('uploadPromptPat').classList.remove('hidden');
-      document.getElementById('previewAreaPat').classList.add('hidden');
-      document.getElementById('patModoBox').classList.add('hidden');
+      document.getElementById('uploadPromptPat').classList.remove('oculto');
+      const pv = document.getElementById('previewAreaPat');
+      pv.classList.add('oculto'); pv.style.display = 'none';
+      document.getElementById('patModoBox').classList.add('oculto');
       document.getElementById('convertPatBtn').disabled = true;
-      document.getElementById('resultPat').classList.add('hidden');
+      document.getElementById('resultPat').classList.add('oculto');
     }
 
     async function convertPat() {
       if (!patFile) return;
       document.getElementById('convertPatBtn').disabled = true;
-      document.getElementById('loadingPat').classList.remove('hidden');
-      document.getElementById('resultPat').classList.add('hidden');
+      const ld = document.getElementById('loadingPat');
+      ld.classList.remove('oculto'); ld.style.display = 'flex';
+      document.getElementById('resultPat').classList.add('oculto');
 
       const fd = new FormData();
       fd.append('file', patFile);
@@ -594,17 +1098,17 @@
           patTileH = parseFloat(tile.split('x')[1]) || 100;
           document.getElementById('statTile').textContent = tile;
           calcScale();
-          scaleBox.classList.remove('hidden');
+          scaleBox.classList.remove('oculto');
         } else {
-          scaleBox.classList.add('hidden');
+          scaleBox.classList.add('oculto');
         }
 
-        document.getElementById('loadingPat').classList.add('hidden');
-        document.getElementById('resultPat').classList.remove('hidden');
+        ld.classList.add('oculto'); ld.style.display = 'none';
+        document.getElementById('resultPat').classList.remove('oculto');
       } catch (err) {
-        document.getElementById('loadingPat').classList.add('hidden');
+        ld.classList.add('oculto'); ld.style.display = 'none';
         document.getElementById('convertPatBtn').disabled = false;
-        alert('Erro: ' + err.message);
+        alert('Não consegui gerar o padrão: ' + err.message);
       }
     }
 
@@ -635,26 +1139,28 @@
       kmlFile = f;
       document.getElementById('previewNameKml').textContent = f.name;
       document.getElementById('previewSizeKml').textContent = (f.size / 1024).toFixed(0) + ' KB';
-      document.getElementById('uploadPromptKml').classList.add('hidden');
-      document.getElementById('previewAreaKml').classList.remove('hidden');
-      document.getElementById('previewAreaKml').classList.add('flex');
+      document.getElementById('uploadPromptKml').classList.add('oculto');
+      const pv = document.getElementById('previewAreaKml');
+      pv.classList.remove('oculto'); pv.style.display = 'flex';
       document.getElementById('convertKmlBtn').disabled = false;
     }
 
     function resetKml() {
       kmlFile = null; kmlBlob = null;
       document.getElementById('fileInputKml').value = '';
-      document.getElementById('uploadPromptKml').classList.remove('hidden');
-      document.getElementById('previewAreaKml').classList.add('hidden');
+      document.getElementById('uploadPromptKml').classList.remove('oculto');
+      const pv = document.getElementById('previewAreaKml');
+      pv.classList.add('oculto'); pv.style.display = 'none';
       document.getElementById('convertKmlBtn').disabled = true;
-      document.getElementById('resultKml').classList.add('hidden');
+      document.getElementById('resultKml').classList.add('oculto');
     }
 
     async function convertKml() {
       if (!kmlFile) return;
       document.getElementById('convertKmlBtn').disabled = true;
-      document.getElementById('loadingKml').classList.remove('hidden');
-      document.getElementById('resultKml').classList.add('hidden');
+      const ld = document.getElementById('loadingKml');
+      ld.classList.remove('oculto'); ld.style.display = 'flex';
+      document.getElementById('resultKml').classList.add('oculto');
 
       const local = document.querySelector('input[name="kmlCoord"]:checked')?.value === 'local';
       const fd = new FormData();
@@ -671,12 +1177,12 @@
         document.getElementById('statPlace').textContent = res.headers.get('X-Placemarks') || '—';
         document.getElementById('statEnt').textContent   = res.headers.get('X-Entidades') || '—';
         document.getElementById('statZona').textContent  = res.headers.get('X-Zona') || '—';
-        document.getElementById('loadingKml').classList.add('hidden');
-        document.getElementById('resultKml').classList.remove('hidden');
+        ld.classList.add('oculto'); ld.style.display = 'none';
+        document.getElementById('resultKml').classList.remove('oculto');
       } catch (err) {
-        document.getElementById('loadingKml').classList.add('hidden');
+        ld.classList.add('oculto'); ld.style.display = 'none';
         document.getElementById('convertKmlBtn').disabled = false;
-        alert('Erro: ' + err.message);
+        alert('Não consegui converter o terreno: ' + err.message);
       }
     }
 
@@ -712,17 +1218,18 @@
       reader.readAsDataURL(f);
       document.getElementById('previewName').textContent = f.name;
       document.getElementById('previewSize').textContent = (f.size / 1024).toFixed(0) + ' KB';
-      document.getElementById('uploadPrompt').classList.add('hidden');
-      document.getElementById('previewArea').classList.remove('hidden');
-      document.getElementById('previewArea').classList.add('flex');
+      document.getElementById('uploadPrompt').classList.add('oculto');
+      const pv = document.getElementById('previewArea');
+      pv.classList.remove('oculto'); pv.style.display = 'flex';
       document.getElementById('convertBtn').disabled = false;
     }
 
     function resetUpload() {
       selectedFile = null;
       document.getElementById('fileInput').value = '';
-      document.getElementById('uploadPrompt').classList.remove('hidden');
-      document.getElementById('previewArea').classList.add('hidden');
+      document.getElementById('uploadPrompt').classList.remove('oculto');
+      const pv = document.getElementById('previewArea');
+      pv.classList.add('oculto'); pv.style.display = 'none';
       document.getElementById('convertBtn').disabled = true;
     }
 
@@ -731,17 +1238,18 @@
       el.classList.add('selected');
       selectedMode = el.dataset.mode;
       // slider de detalhe só faz sentido no modo clássico (Otsu)
-      document.getElementById('nivelBox').classList.toggle('hidden', selectedMode !== 'classico');
+      document.getElementById('nivelBox').classList.toggle('oculto', selectedMode !== 'classico');
     }
 
     async function convert() {
       if (!selectedFile) return;
 
       document.getElementById('convertBtn').disabled = true;
-      document.getElementById('loading').classList.remove('hidden');
+      const ld = document.getElementById('loading');
+      ld.classList.remove('oculto'); ld.style.display = 'flex';
       document.getElementById('result').style.display = 'none';
 
-      const msgs = ['Analisando imagem...', 'Detectando bordas...', 'Vetorizando linhas...', 'Gerando DXF...'];
+      const msgs = ['Analisando a imagem…', 'Encontrando as bordas…', 'Desenhando as linhas…', 'Montando o DXF…'];
       let mi = 0;
       const msgEl = document.getElementById('loadingMsg');
       const msgTimer = setInterval(() => { msgEl.textContent = msgs[++mi % msgs.length]; }, 1800);
@@ -755,7 +1263,10 @@
         const res = await fetch(`/convert?modo=${selectedMode}&nivel=${nivel}`, { method: 'POST', body: fd });
         clearInterval(msgTimer);
 
-        if (!res.ok) throw new Error('Erro ' + res.status);
+        if (!res.ok) {
+          let d; try { d = (await res.json()).detail; } catch (e) {}
+          throw new Error(d || ('Erro ' + res.status));
+        }
 
         const elapsed = ((Date.now() - t0) / 1000).toFixed(1) + 's';
         resultBlob = await res.blob();
@@ -766,14 +1277,14 @@
         document.getElementById('statSize').textContent = (resultBlob.size / 1024).toFixed(0) + ' KB';
         document.getElementById('statTime').textContent = elapsed;
 
-        document.getElementById('loading').classList.add('hidden');
+        ld.classList.add('oculto'); ld.style.display = 'none';
         document.getElementById('result').style.display = 'block';
 
       } catch (err) {
         clearInterval(msgTimer);
-        document.getElementById('loading').classList.add('hidden');
+        ld.classList.add('oculto'); ld.style.display = 'none';
         document.getElementById('convertBtn').disabled = false;
-        alert('Erro na conversão: ' + err.message);
+        alert('Não consegui converter: ' + err.message);
       }
     }
 
@@ -789,22 +1300,116 @@
       resetUpload();
       resultBlob = null;
       document.getElementById('result').style.display = 'none';
-      document.getElementById('loading').classList.add('hidden');
+      const ld = document.getElementById('loading');
+      ld.classList.add('oculto'); ld.style.display = 'none';
     }
+
+    // ── Mural de recados (salvo no navegador) ────────────────────────
+    const CHAVE_RECADOS = 'jenarch_recados';
+    let recados = [];
+
+    function carregarRecados() {
+      try {
+        recados = JSON.parse(localStorage.getItem(CHAVE_RECADOS)) || [];
+      } catch (e) {
+        recados = [];   // storage bloqueado ou conteudo invalido
+      }
+      desenharRecados();
+    }
+
+    function salvarRecados() {
+      try {
+        localStorage.setItem(CHAVE_RECADOS, JSON.stringify(recados));
+      } catch (e) {
+        // navegador em modo privado ou sem espaco: o recado segue na tela
+      }
+    }
+
+    function novoRecado() {
+      recados.unshift({ texto: '', data: Date.now() });
+      salvarRecados();
+      desenharRecados();
+      const primeiro = document.querySelector('#recados textarea');
+      if (primeiro) primeiro.focus();
+    }
+
+    function apagarRecado(i) {
+      recados.splice(i, 1);
+      salvarRecados();
+      desenharRecados();
+    }
+
+    function crescerCampo(el) {
+      el.style.height = 'auto';
+      el.style.height = el.scrollHeight + 'px';
+    }
+
+    function dataCurta(ts) {
+      const d = new Date(ts);
+      return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+    }
+
+    function desenharRecados() {
+      const box = document.getElementById('recados');
+      box.textContent = '';
+
+      if (!recados.length) {
+        const vazio = document.createElement('p');
+        vazio.className = 'mural-vazio';
+        vazio.textContent = 'Nada anotado ainda. Toque em “+ Novo” para deixar um lembrete.';
+        box.appendChild(vazio);
+        return;
+      }
+
+      recados.forEach((r, i) => {
+        const nota = document.createElement('div');
+        nota.className = 'recado';
+
+        const apagar = document.createElement('button');
+        apagar.className = 'apagar';
+        apagar.textContent = '×';
+        apagar.title = 'Apagar recado';
+        apagar.setAttribute('aria-label', 'Apagar recado');
+        apagar.onclick = () => apagarRecado(i);
+
+        const campo = document.createElement('textarea');
+        campo.value = r.texto;
+        campo.rows = 1;
+        campo.placeholder = 'Escreva aqui…';
+        campo.setAttribute('aria-label', 'Texto do recado');
+        // grava a cada tecla: ela nunca precisa lembrar de salvar
+        campo.addEventListener('input', () => {
+          recados[i].texto = campo.value;
+          salvarRecados();
+          crescerCampo(campo);
+        });
+
+        const data = document.createElement('p');
+        data.className = 'data';
+        data.textContent = dataCurta(r.data);
+
+        nota.append(apagar, campo, data);
+        box.appendChild(nota);
+        crescerCampo(campo);
+      });
+    }
+
+    carregarRecados();
 
     // ── Coraçõezinhos ao clicar ──────────────────────────────────────
     document.addEventListener('click', e => {
-      const emojis = ['💕','💖','💗','❤️','💘'];
-      const n = 3;
-      for (let i = 0; i < n; i++) {
+      // deixa o mural em paz: atrapalha escrever
+      if (e.target.closest('.mural')) return;
+      const emojis = ['🌸','💕','🤍','💗','✿'];
+      for (let i = 0; i < 3; i++) {
         const h = document.createElement('span');
         h.className = 'heart-pop';
         h.textContent = emojis[Math.floor(Math.random() * emojis.length)];
-        h.style.left = (e.clientX + (Math.random() * 30 - 15)) + 'px';
+        h.style.left = (e.clientX + (Math.random() * 26 - 13)) + 'px';
         h.style.top  = (e.clientY + (Math.random() * 10 - 5)) + 'px';
-        h.style.animationDelay = (i * 60) + 'ms';
+        h.style.animationDelay = (i * 70) + 'ms';
         document.body.appendChild(h);
-        setTimeout(() => h.remove(), 1100);
+        setTimeout(() => h.remove(), 1200);
       }
     });
   </script>

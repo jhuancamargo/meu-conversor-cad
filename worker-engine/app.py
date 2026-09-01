@@ -2,16 +2,53 @@ import cv2
 import numpy as np
 import os
 import uuid
+import logging
 import ezdxf
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse
-import shutil
+from starlette.background import BackgroundTask
 from skimage.morphology import skeletonize
 import sknw
 from scipy.interpolate import splprep, splev
 
+log = logging.getLogger("conversor")
+
 app = FastAPI()
 DXF_VERSION = "R2010"
+
+# Limite de upload. Acima disso a conversao consome memoria demais e
+# derruba o servidor (o modo classico faz upscale 4x da imagem).
+# PDFs de planta costumam ser maiores, mas so sao lidos como vetor.
+MAX_UPLOAD_MB = 60
+
+
+def _save_upload(file: UploadFile, input_path: str) -> None:
+    """Grava o upload em disco respeitando MAX_UPLOAD_MB.
+    Le em blocos para nao carregar o arquivo inteiro na memoria."""
+    limit = MAX_UPLOAD_MB * 1024 * 1024
+    total = 0
+    with open(input_path, "wb") as buf:
+        while chunk := file.file.read(1024 * 1024):
+            total += len(chunk)
+            if total > limit:
+                buf.close()
+                os.remove(input_path)
+                raise HTTPException(
+                    413, f"Arquivo muito grande (limite {MAX_UPLOAD_MB} MB)")
+            buf.write(chunk)
+
+
+def _cleanup(*paths):
+    """BackgroundTask que remove os temporarios DEPOIS de enviar a resposta.
+    O FileResponse precisa do arquivo em disco durante o envio, por isso a
+    limpeza nao pode ficar num finally."""
+    def _rm():
+        for p in paths:
+            try:
+                os.remove(p)
+            except OSError:
+                pass
+    return BackgroundTask(_rm)
 
 def extract_vetorial_dxf(image_path: str, output_path: str) -> bool:
     """Modo vetorial: Canny + findContours. Ideal para imagens digitais limpas (renders, capturas de tela)."""
@@ -56,13 +93,19 @@ def extract_optimized_quality_dxf(image_path: str, output_path: str,
     # filtro de poeira: em niveis baixos remove mais fragmentos pequenos.
     dust = 5 + (10 - nivel)  # 5 (nivel 10) ate 15 (nivel 0)
 
-    # 1. Upscale para precisão matemática (4x)
+    # 1. Upscale para precisão matemática (4x).
+    # Teto de seguranca: o esqueleto/grafo/spline sao libs nativas e estouram
+    # (SIGSEGV, mata o processo) em imagens grandes. Limitamos a area final
+    # para que o upscale nunca ultrapasse MAX_PIXELS.
+    MAX_PIXELS = 12_000_000  # ~3460x3460 depois do upscale
     scale = 4.0
+    if img.shape[0] * img.shape[1] * scale * scale > MAX_PIXELS:
+        scale = max(1.0, (MAX_PIXELS / (img.shape[0] * img.shape[1])) ** 0.5)
     gray = cv2.resize(img, (int(img.shape[1] * scale), int(img.shape[0] * scale)),
                       interpolation=cv2.INTER_LANCZOS4)
 
-    # 2. Binarização
-    blur = cv2.GaussianBlur(gray, (1, 1), 0)
+    # 2. Binarização (kernel 3x3: suaviza o serrilhado do upscale)
+    blur = cv2.GaussianBlur(gray, (3, 3), 0)
     _, binary = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
 
     # 3. Esqueletização (1 pixel)
@@ -74,6 +117,7 @@ def extract_optimized_quality_dxf(image_path: str, output_path: str,
     doc = ezdxf.new(dxfversion=DXF_VERSION)
     msp = doc.modelspace()
     img_height = skeleton.shape[0]
+    n = 0
 
     for (start_node, end_node, edge_data) in graph.edges(data=True):
         pts = edge_data['pts']
@@ -106,14 +150,18 @@ def extract_optimized_quality_dxf(image_path: str, output_path: str,
             final_pts = [(float(p[0][0]), float(p[0][1])) for p in approx]
             
             msp.add_lwpolyline(final_pts, dxfattribs={"layer": "NITIDEZ_OTIMIZADA"})
+            n += 1
 
-        except Exception:
-            # Fallback direto em caso de erro matemático
+        except Exception as exc:
+            # Fallback direto em caso de erro matemático (spline degenerada).
+            # Registra a causa: silenciar aqui ja escondeu bugs no passado.
+            log.debug("spline falhou, usando pontos brutos: %s", exc)
             fit_pts = [(float(x_coords[i]), float(y_coords[i])) for i in range(len(x_coords))]
             msp.add_lwpolyline(fit_pts, dxfattribs={"layer": "NITIDEZ_OTIMIZADA"})
+            n += 1
 
     doc.saveas(output_path)
-    return True
+    return n > 0
 
 # --- ROTAS DA API --- (Mantidas as mesmas do seu código original)
 @app.get("/", response_class=HTMLResponse)
@@ -139,30 +187,34 @@ async def convert_image(file: UploadFile = File(...), modo: str = "ia",
     input_path = f"input_{uid}{ext}"
     output_path = f"output_{uid}.dxf"
 
-    with open(input_path, "wb") as buf:
-        shutil.copyfileobj(file.file, buf)
+    _save_upload(file, input_path)
 
     try:
         if modo == "classico":
             success = extract_optimized_quality_dxf(input_path, output_path, nivel=nivel)
-            if not success:
-                raise HTTPException(500, "Falha no processamento")
         elif modo == "vetorial":
             success = extract_vetorial_dxf(input_path, output_path)
-            if not success:
-                raise HTTPException(500, "Falha no processamento")
         else:
             from ai_pipeline import convert as convert_ia
-            convert_ia(input_path, output_path)
+            info = convert_ia(input_path, output_path)
+            success = info.get("polylines", 0) > 0
+
+        if not success:
+            # Nao e falha do servidor: a imagem nao tinha tracos detectaveis.
+            raise HTTPException(
+                422, "Nenhum contorno detectado nesta imagem. Tente outro modo "
+                     "ou uma imagem com traços mais nítidos e bom contraste.")
 
         stem = os.path.splitext(file.filename)[0]
         sufixos = {"ia": "IA_HED", "classico": "LEVE_v2", "vetorial": "VETORIAL"}
         sufixo = sufixos.get(modo, "IA_HED")
         return FileResponse(path=output_path,
                             filename=f"{stem}_{sufixo}.dxf",
-                            media_type="application/dxf")
-    finally:
-        if os.path.exists(input_path): os.remove(input_path)
+                            media_type="application/dxf",
+                            background=_cleanup(input_path, output_path))
+    except Exception:
+        _cleanup(input_path, output_path).func()
+        raise
 
 
 @app.post("/convert-pat")
@@ -182,8 +234,7 @@ async def convert_to_pat(file: UploadFile = File(...), modo: str = "auto"):
     input_path = f"input_{uid}{ext}"
     output_path = f"output_{uid}.pat"
 
-    with open(input_path, "wb") as buf:
-        shutil.copyfileobj(file.file, buf)
+    _save_upload(file, input_path)
 
     try:
         stem = os.path.splitext(file.filename)[0]
@@ -209,9 +260,76 @@ async def convert_to_pat(file: UploadFile = File(...), modo: str = "auto"):
             filename=f"{stem}.pat",
             media_type="application/octet-stream",
             headers=headers,
+            background=_cleanup(input_path, output_path),
         )
+    except Exception:
+        _cleanup(input_path, output_path).func()
+        raise
+
+
+@app.post("/convert-pdf")
+async def convert_pdf_to_dxf(file: UploadFile = File(...), pagina: int = 0,
+                             texto: bool = True):
+    """Converte PDF vetorial (planta exportada de CAD) em DXF.
+    pagina -> indice da pagina, 0 = primeira
+    texto  -> traz as cotas/legendas como TEXT editavel
+    """
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext != ".pdf":
+        raise HTTPException(400, "Envie um arquivo .PDF")
+
+    uid = uuid.uuid4().hex
+    input_path = f"input_{uid}{ext}"
+    output_path = f"output_{uid}.dxf"
+
+    _save_upload(file, input_path)
+
+    try:
+        from pdf_pipeline import pdf_to_dxf
+        stem = os.path.splitext(file.filename)[0]
+        result = pdf_to_dxf(input_path, output_path,
+                            pagina=pagina, incluir_texto=texto)
+
+        if result.get("error"):
+            # PDF escaneado (sem vetor) nao e erro do servidor: e o
+            # arquivo errado para esta aba.
+            raise HTTPException(422, result["error"])
+
+        return FileResponse(
+            path=output_path,
+            filename=f"{stem}.dxf",
+            media_type="application/dxf",
+            headers={
+                "X-Entidades": str(result["entidades"]),
+                "X-Textos": str(result["textos"]),
+                "X-Layers": str(result["layers"]),
+                "X-Paginas": str(result["paginas"]),
+                "X-Formato": str(result["formato"]),
+            },
+            background=_cleanup(input_path, output_path),
+        )
+    except Exception:
+        _cleanup(input_path, output_path).func()
+        raise
+
+
+@app.post("/pdf-info")
+async def pdf_info(file: UploadFile = File(...)):
+    """Quantas paginas tem o PDF -- o frontend usa para oferecer a escolha."""
+    if os.path.splitext(file.filename)[1].lower() != ".pdf":
+        raise HTTPException(400, "Envie um arquivo .PDF")
+
+    uid = uuid.uuid4().hex
+    input_path = f"input_{uid}.pdf"
+    _save_upload(file, input_path)
+    try:
+        from pdf_pipeline import contar_paginas
+        return {"paginas": contar_paginas(input_path)}
     finally:
-        if os.path.exists(input_path): os.remove(input_path)
+        try:
+            os.remove(input_path)
+        except OSError:
+            pass
 
 
 @app.post("/convert-kml")
@@ -228,8 +346,7 @@ async def convert_kml_to_dxf(file: UploadFile = File(...), local: bool = False):
     input_path = f"input_{uid}{ext}"
     output_path = f"output_{uid}.dxf"
 
-    with open(input_path, "wb") as buf:
-        shutil.copyfileobj(file.file, buf)
+    _save_upload(file, input_path)
 
     try:
         from kml_pipeline import kml_to_dxf
@@ -249,6 +366,8 @@ async def convert_kml_to_dxf(file: UploadFile = File(...), local: bool = False):
                 "X-Zona": str(result["zona_utm"]),
                 "X-Coordenadas": str(result["coordenadas"]),
             },
+            background=_cleanup(input_path, output_path),
         )
-    finally:
-        if os.path.exists(input_path): os.remove(input_path)
+    except Exception:
+        _cleanup(input_path, output_path).func()
+        raise

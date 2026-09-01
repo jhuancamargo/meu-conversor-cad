@@ -1,6 +1,7 @@
 fastapi
 uvicorn
 python-multipart
+pymupdf
 opencv-python-headless
 numpy
 ezdxf
