@@ -13,3 +13,5 @@ torch
 torchvision
 controlnet_aux
 Pillow
+pyproj
+shapely

@@ -332,6 +332,62 @@ async def pdf_info(file: UploadFile = File(...)):
             pass
 
 
+@app.post("/convert-osm")
+async def convert_osm_to_dxf(
+    sul: float, oeste: float, norte: float, este: float,
+    camadas: str = "buildings,roads,paths,water,boundaries",
+    curvas: bool = True, intervalo: float = 1.0,
+    intervalo_maior: float = 5.0, epsg: int = 0,
+):
+    """Exporta um recorte do OpenStreetMap como DXF georreferenciado (metros).
+    sul/oeste/norte/este -> o retangulo escolhido no mapa
+    camadas              -> lista separada por virgula
+    curvas               -> gerar curvas de nivel do terreno
+    epsg                 -> 0 = UTM automatico; ou um EPSG escolhido a mao
+    """
+    uid = uuid.uuid4().hex
+    output_path = f"output_{uid}.dxf"
+
+    try:
+        from osm_pipeline import osm_para_dxf
+        escolhidas = tuple(c.strip() for c in camadas.split(",") if c.strip())
+        result = osm_para_dxf(
+            sul, oeste, norte, este, output_path,
+            camadas=escolhidas, curvas=curvas,
+            intervalo=intervalo, intervalo_maior=intervalo_maior,
+            epsg_manual=epsg or None,
+        )
+
+        if result.get("error"):
+            # Nao e falha do servidor: area grande demais, sem dados, ou
+            # o Overpass ocupado. A mensagem ja explica o que fazer.
+            raise HTTPException(422, result["error"])
+
+        headers = {
+            "X-Entidades": str(result["entidades"]),
+            "X-Edificios": str(result["edificios"]),
+            "X-Vias": str(result["vias"]),
+            "X-Curvas": str(result["curvas"]),
+            "X-Epsg": str(result["epsg"]),
+            "X-Zona": str(result["zona"]),
+            "X-Medida": str(result["medida"]),
+            "X-Area": str(result["area_km2"]),
+        }
+        if result.get("aviso"):
+            headers["X-Aviso"] = result["aviso"]
+
+        return FileResponse(
+            path=output_path,
+            filename="contexto_osm.dxf",
+            media_type="application/dxf",
+            headers=headers,
+            background=_cleanup(output_path),
+        )
+    except Exception:
+        _cleanup(output_path).func()
+        raise
+
+
 @app.post("/convert-kml")
 async def convert_kml_to_dxf(file: UploadFile = File(...), local: bool = False):
     """Converte KML/KMZ (Google Earth) em DXF georreferenciado (UTM/metros).

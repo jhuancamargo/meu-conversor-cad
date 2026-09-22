@@ -6,6 +6,7 @@
   <title>Estúdio CAD — The JenArch</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300&family=Karla:wght@300;400;500;600;700&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
   <style>
     /* ═══════════════════════════════════════════════════════════════
@@ -529,6 +530,7 @@
     <nav class="guias">
       <button id="tabImgBtn" class="tab-btn ativa" onclick="switchTab('img')">Imagem → DXF</button>
       <button id="tabPdfBtn" class="tab-btn" onclick="switchTab('pdf')">PDF → DXF</button>
+      <button id="tabOsmBtn" class="tab-btn" onclick="switchTab('osm')">Mapa → DXF</button>
       <button id="tabPatBtn" class="tab-btn" onclick="switchTab('pat')">Padrão → PAT</button>
       <button id="tabKmlBtn" class="tab-btn" onclick="switchTab('kml')">Terreno → DXF</button>
     </nav>
@@ -687,6 +689,101 @@
       </div>
 
     </div><!-- /tabPdf -->
+
+    <!-- ── ABA: Mapa → DXF ────────────────────────────────────────── -->
+    <div id="tabOsm" class="oculto" style="flex-direction:column;gap:20px">
+
+      <div class="folha">
+        <p class="rotulo" style="margin-bottom:8px">O entorno do terreno, direto do mapa</p>
+        <p class="texto-nota" style="margin:0 0 10px">
+          Escolha um lugar no mapa, desenhe o retângulo e receba o contexto em
+          DXF: edifícios, ruas, caminhos, água e curvas de nível — em
+          <b>metros</b>, já no sistema de coordenadas certo para o local.
+        </p>
+        <p class="texto-nota" style="margin:0;padding-top:10px;border-top:1px solid var(--line)">
+          <b>Precisão do terreno:</b> as curvas vêm de modelo de elevação de
+          25–30&nbsp;m. Servem para <b>contexto e estudo de massa</b> — não
+          substituem levantamento topográfico.
+        </p>
+      </div>
+
+      <div class="folha" style="padding:0;overflow:hidden">
+        <div style="padding:14px 18px 10px">
+          <label for="osmBusca" class="rotulo" style="display:block">Procurar um lugar</label>
+          <div style="display:flex;gap:8px">
+            <input id="osmBusca" type="text" placeholder="Ex.: Altea, Alicante"
+                   style="flex:1;font-family:'Karla',sans-serif;background:#fff;border:1px solid var(--line);border-radius:8px;padding:8px 11px;color:var(--ink);font-size:.82rem;outline:none"
+                   onkeydown="if(event.key==='Enter'){event.preventDefault();buscarLugar();}">
+            <button class="btn-suave" style="width:auto;padding:8px 16px" onclick="buscarLugar()">Procurar</button>
+          </div>
+        </div>
+        <div id="mapa" style="height:380px;width:100%;background:var(--paper-warm)"></div>
+        <p id="osmAjuda" style="margin:0;padding:10px 18px;font-size:.73rem;color:var(--ink-soft);border-top:1px solid var(--line)">
+          Clique em <b>dois cantos</b> no mapa para desenhar o retângulo da área.
+        </p>
+      </div>
+
+      <div id="osmOpcoes" class="folha oculto">
+        <p class="rotulo">O que trazer para o desenho</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:14px">
+          <label style="display:flex;align-items:center;gap:8px;font-size:.78rem;cursor:pointer">
+            <input type="checkbox" class="osmCamada" value="buildings" checked style="accent-color:var(--rose);width:15px;height:15px"> Edifícios</label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:.78rem;cursor:pointer">
+            <input type="checkbox" class="osmCamada" value="roads" checked style="accent-color:var(--rose);width:15px;height:15px"> Ruas</label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:.78rem;cursor:pointer">
+            <input type="checkbox" class="osmCamada" value="paths" checked style="accent-color:var(--rose);width:15px;height:15px"> Caminhos a pé</label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:.78rem;cursor:pointer">
+            <input type="checkbox" class="osmCamada" value="water" checked style="accent-color:var(--rose);width:15px;height:15px"> Água</label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:.78rem;cursor:pointer">
+            <input type="checkbox" class="osmCamada" value="boundaries" checked style="accent-color:var(--rose);width:15px;height:15px"> Limites de parcela</label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:.78rem;cursor:pointer">
+            <input type="checkbox" id="osmCurvas" checked style="accent-color:var(--rose);width:15px;height:15px"> Curvas de nível</label>
+        </div>
+
+        <div id="osmCurvaOpc" style="display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;padding-top:12px;border-top:1px solid var(--line)">
+          <div>
+            <label for="osmInt" style="font-size:.66rem;color:var(--ink-soft);display:block;margin-bottom:3px">Curva menor, a cada</label>
+            <div style="display:flex;align-items:center;gap:5px">
+              <input id="osmInt" type="number" value="1" min="0.25" step="0.25" style="width:72px">
+              <span style="font-size:.74rem;color:var(--ink-soft)">m</span>
+            </div>
+          </div>
+          <div>
+            <label for="osmIntM" style="font-size:.66rem;color:var(--ink-soft);display:block;margin-bottom:3px">Curva mestra, a cada</label>
+            <div style="display:flex;align-items:center;gap:5px">
+              <input id="osmIntM" type="number" value="5" min="1" step="1" style="width:72px">
+              <span style="font-size:.74rem;color:var(--ink-soft)">m</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button id="osmBtn" class="btn-convert" onclick="exportarOsm()" disabled>Exportar DXF do mapa</button>
+
+      <div id="osmLoading" class="oculto" style="display:flex;flex-direction:column;gap:10px">
+        <div class="pulse-bar"></div>
+        <p id="osmLoadMsg" style="text-align:center;font-family:'Cormorant Garamond',serif;font-style:italic;font-size:1.05rem;color:var(--ink-soft);margin:0">A buscar o mapa…</p>
+      </div>
+
+      <div id="osmResult" class="folha oculto">
+        <p style="font-family:'Cormorant Garamond',serif;font-size:1.3rem;font-style:italic;color:var(--sage);margin:0 0 14px">
+          Contexto exportado
+        </p>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:14px">
+          <div class="stat-chip"><p class="valor" id="osmStatEdif">—</p><p class="rot">edifícios</p></div>
+          <div class="stat-chip"><p class="valor" id="osmStatVias">—</p><p class="rot">ruas</p></div>
+          <div class="stat-chip"><p class="valor" id="osmStatCurv">—</p><p class="rot">curvas</p></div>
+        </div>
+        <p class="texto-nota" style="margin:0 0 6px">
+          Área de <span id="osmStatMedida" style="font-family:'Courier Prime',monospace">—</span>,
+          em <span id="osmStatZona" style="font-family:'Courier Prime',monospace">—</span>, medidas em metros.
+        </p>
+        <p id="osmStatAviso" class="texto-nota oculto" style="margin:0 0 12px;color:var(--terra)"></p>
+        <button class="btn-baixar" onclick="baixarOsm()" style="margin-bottom:9px">Baixar DXF</button>
+        <button class="btn-suave" onclick="limparOsm()">Escolher outra área</button>
+      </div>
+
+    </div><!-- /tabOsm -->
 
     <!-- ── ABA: PAT ───────────────────────────────────────────────── -->
     <div id="tabPat" class="oculto" style="flex-direction:column;gap:20px">
@@ -891,6 +988,7 @@
 
 </div>
 
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
     let selectedMode = 'vetorial';
     let selectedFile = null;
@@ -899,14 +997,15 @@
 
     // ── Troca de abas ─────────────────────────────────────────────────────────
     function switchTab(tab) {
-      const tabs = ['img', 'pdf', 'pat', 'kml'];
-      const ids  = { img: 'tabImg', pdf: 'tabPdf', pat: 'tabPat', kml: 'tabKml' };
-      const btns = { img: 'tabImgBtn', pdf: 'tabPdfBtn', pat: 'tabPatBtn', kml: 'tabKmlBtn' };
+      const tabs = ['img', 'pdf', 'osm', 'pat', 'kml'];
+      const ids  = { img: 'tabImg', pdf: 'tabPdf', osm: 'tabOsm', pat: 'tabPat', kml: 'tabKml' };
+      const btns = { img: 'tabImgBtn', pdf: 'tabPdfBtn', osm: 'tabOsmBtn', pat: 'tabPatBtn', kml: 'tabKmlBtn' };
       tabs.forEach(t => {
         const painel = document.getElementById(ids[t]);
         const ativo = (tab === t);
         painel.classList.toggle('oculto', !ativo);
         if (ativo) painel.style.display = 'flex';
+        if (ativo && t === 'osm') iniciarMapa();
         document.getElementById(btns[t]).classList.toggle('ativa', ativo);
       });
     }
@@ -1006,6 +1105,167 @@
       const url = URL.createObjectURL(pdfBlob);
       const a = document.createElement('a');
       a.href = url; a.download = pdfFilename; a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // ── Aba Mapa → DXF ────────────────────────────────────────────────────────
+    let mapa = null, retangulo = null, cantoA = null, osmBlob = null;
+    let marcadorA = null;
+
+    function iniciarMapa() {
+      if (mapa) { setTimeout(() => mapa.invalidateSize(), 60); return; }
+      // Altea (Alicante) como ponto de partida
+      mapa = L.map('mapa').setView([38.5995, -0.0520], 15);
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap'
+      }).addTo(mapa);
+      mapa.on('click', cliqueNoMapa);
+      setTimeout(() => mapa.invalidateSize(), 60);
+    }
+
+    function cliqueNoMapa(e) {
+      if (!cantoA) {
+        // primeiro canto
+        limparRetangulo();
+        cantoA = e.latlng;
+        marcadorA = L.circleMarker(cantoA, {
+          radius: 5, color: '#c47b8a', fillColor: '#c47b8a', fillOpacity: 1
+        }).addTo(mapa);
+        document.getElementById('osmAjuda').innerHTML =
+          'Agora clique no <b>canto oposto</b> para fechar o retângulo.';
+      } else {
+        // segundo canto: fecha o retangulo
+        const limites = L.latLngBounds(cantoA, e.latlng);
+        if (marcadorA) { mapa.removeLayer(marcadorA); marcadorA = null; }
+        retangulo = L.rectangle(limites, {
+          color: '#b8695a', weight: 2, fillColor: '#c47b8a', fillOpacity: 0.12
+        }).addTo(mapa);
+        cantoA = null;
+        mostrarArea(limites);
+      }
+    }
+
+    function areaKm2(lim) {
+      const s = lim.getSouth(), n = lim.getNorth();
+      const o = lim.getWest(), e = lim.getEast();
+      const alt = (n - s) * 111.32;
+      const larg = (e - o) * 111.32 * Math.cos((s + n) / 2 * Math.PI / 180);
+      return Math.abs(alt * larg);
+    }
+
+    function mostrarArea(lim) {
+      const a = areaKm2(lim);
+      const ajuda = document.getElementById('osmAjuda');
+      const btn = document.getElementById('osmBtn');
+      document.getElementById('osmOpcoes').classList.remove('oculto');
+      if (a > 25) {
+        ajuda.innerHTML = `Área de <b>${a.toFixed(1)} km²</b> — o máximo é 25 km². ` +
+                          `Desenhe um retângulo menor.`;
+        ajuda.style.color = 'var(--terra)';
+        btn.disabled = true;
+      } else {
+        ajuda.innerHTML = `Área selecionada: <b>${a.toFixed(2)} km²</b>. ` +
+                          `Clique no mapa para escolher outra.`;
+        ajuda.style.color = '';
+        btn.disabled = false;
+      }
+    }
+
+    function limparRetangulo() {
+      if (retangulo) { mapa.removeLayer(retangulo); retangulo = null; }
+      if (marcadorA) { mapa.removeLayer(marcadorA); marcadorA = null; }
+    }
+
+    function limparOsm() {
+      limparRetangulo();
+      cantoA = null; osmBlob = null;
+      document.getElementById('osmBtn').disabled = true;
+      document.getElementById('osmResult').classList.add('oculto');
+      const aj = document.getElementById('osmAjuda');
+      aj.innerHTML = 'Clique em <b>dois cantos</b> no mapa para desenhar o retângulo da área.';
+      aj.style.color = '';
+    }
+
+    async function buscarLugar() {
+      const termo = document.getElementById('osmBusca').value.trim();
+      if (!termo) return;
+      try {
+        const r = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q='
+                              + encodeURIComponent(termo));
+        const d = await r.json();
+        if (!d.length) { alert('Não encontrei esse lugar. Tente outro nome.'); return; }
+        mapa.setView([parseFloat(d[0].lat), parseFloat(d[0].lon)], 16);
+      } catch (e) {
+        alert('Não consegui procurar agora. Verifique a ligação à internet.');
+      }
+    }
+
+    async function exportarOsm() {
+      if (!retangulo) return;
+      const lim = retangulo.getBounds();
+      const camadas = [...document.querySelectorAll('.osmCamada:checked')]
+                        .map(c => c.value).join(',');
+      if (!camadas) { alert('Escolha pelo menos uma camada para exportar.'); return; }
+
+      const curvas = document.getElementById('osmCurvas').checked;
+      const intervalo = parseFloat(document.getElementById('osmInt').value) || 1;
+      const intervaloM = parseFloat(document.getElementById('osmIntM').value) || 5;
+
+      document.getElementById('osmBtn').disabled = true;
+      const ld = document.getElementById('osmLoading');
+      ld.classList.remove('oculto'); ld.style.display = 'flex';
+      document.getElementById('osmResult').classList.add('oculto');
+
+      const msgs = curvas
+        ? ['A buscar o mapa…', 'A ler edifícios e ruas…', 'A medir o terreno…', 'A desenhar as curvas…']
+        : ['A buscar o mapa…', 'A ler edifícios e ruas…', 'A montar o DXF…'];
+      let mi = 0;
+      const msgEl = document.getElementById('osmLoadMsg');
+      const timer = setInterval(() => { msgEl.textContent = msgs[++mi % msgs.length]; }, 2500);
+
+      const q = new URLSearchParams({
+        sul: lim.getSouth(), oeste: lim.getWest(),
+        norte: lim.getNorth(), este: lim.getEast(),
+        camadas, curvas, intervalo, intervalo_maior: intervaloM,
+      });
+
+      try {
+        const res = await fetch('/convert-osm?' + q, { method: 'POST' });
+        clearInterval(timer);
+        if (!res.ok) {
+          let d; try { d = (await res.json()).detail; } catch (e) {}
+          throw new Error(d || ('Erro ' + res.status));
+        }
+        osmBlob = await res.blob();
+
+        document.getElementById('osmStatEdif').textContent   = res.headers.get('X-Edificios') || '—';
+        document.getElementById('osmStatVias').textContent   = res.headers.get('X-Vias') || '—';
+        document.getElementById('osmStatCurv').textContent   = res.headers.get('X-Curvas') || '—';
+        document.getElementById('osmStatMedida').textContent = res.headers.get('X-Medida') || '—';
+        document.getElementById('osmStatZona').textContent   = res.headers.get('X-Zona') || '—';
+
+        const aviso = res.headers.get('X-Aviso');
+        const elA = document.getElementById('osmStatAviso');
+        if (aviso) { elA.textContent = aviso; elA.classList.remove('oculto'); }
+        else { elA.classList.add('oculto'); }
+
+        ld.classList.add('oculto'); ld.style.display = 'none';
+        document.getElementById('osmResult').classList.remove('oculto');
+        document.getElementById('osmBtn').disabled = false;
+      } catch (err) {
+        clearInterval(timer);
+        ld.classList.add('oculto'); ld.style.display = 'none';
+        document.getElementById('osmBtn').disabled = false;
+        alert(err.message);
+      }
+    }
+
+    function baixarOsm() {
+      if (!osmBlob) return;
+      const url = URL.createObjectURL(osmBlob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'contexto_osm.dxf'; a.click();
       URL.revokeObjectURL(url);
     }
 
