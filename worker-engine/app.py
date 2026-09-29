@@ -190,8 +190,18 @@ async def convert_image(file: UploadFile = File(...), modo: str = "ia",
     _save_upload(file, input_path)
 
     try:
+        info = {}
         if modo == "classico":
-            success = extract_optimized_quality_dxf(input_path, output_path, nivel=nivel)
+            # desenho tecnico: retas/arcos/circulos, areas cheias e cotas (mm).
+            # Se o motor novo falhar, cai no esqueleto antigo.
+            try:
+                from tecnico_pipeline import converte as converte_tecnico
+                info = converte_tecnico(input_path, output_path, nivel=nivel)
+                success = not info.get("error")
+            except Exception as exc:
+                log.warning("motor tecnico falhou, usando o antigo: %s", exc)
+                info = {}
+                success = extract_optimized_quality_dxf(input_path, output_path, nivel=nivel)
         elif modo == "vetorial":
             success = extract_vetorial_dxf(input_path, output_path)
         else:
@@ -208,9 +218,16 @@ async def convert_image(file: UploadFile = File(...), modo: str = "ia",
         stem = os.path.splitext(file.filename)[0]
         sufixos = {"ia": "IA_HED", "classico": "LEVE_v2", "vetorial": "VETORIAL"}
         sufixo = sufixos.get(modo, "IA_HED")
+        headers = {}
+        if info.get("unidade"):
+            headers["X-Unidade"] = info["unidade"]
+            headers["X-Geometria"] = (f'{info["retas"]} retas, {info["arcos"]} arcos, '
+                                      f'{info["circulos"]} círculos').encode("latin-1", "ignore").decode("latin-1")
+            headers["X-Cotas"] = ", ".join(info.get("cotas_confirmadas") or []).replace("Ø", "D") or "-"
         return FileResponse(path=output_path,
                             filename=f"{stem}_{sufixo}.dxf",
                             media_type="application/dxf",
+                            headers=headers,
                             background=_cleanup(input_path, output_path))
     except Exception:
         _cleanup(input_path, output_path).func()

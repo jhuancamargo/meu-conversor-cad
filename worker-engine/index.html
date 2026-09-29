@@ -568,8 +568,8 @@
           </div>
           <div class="mode-card" data-mode="classico" onclick="selectMode(this)">
             <span class="mode-badge">OTSU</span>
-            <p class="nome">Escaneado</p>
-            <p class="uso">Planta escaneada com fundo branco</p>
+            <p class="nome">Desenho técnico</p>
+            <p class="uso">Preto e branco com cotas: círculos, arcos e medidas em mm</p>
           </div>
           <div class="mode-card selected" data-mode="vetorial" onclick="selectMode(this)">
             <span class="mode-badge">VETOR</span>
@@ -1533,7 +1533,13 @@
         const cd = res.headers.get('content-disposition') || '';
         resultFilename = cd.match(/filename="?([^"]+)"?/)?.[1] || 'convertido.dxf';
 
-        document.getElementById('statPolylines').textContent = '—';
+        const unid = res.headers.get('X-Unidade');
+        document.getElementById('statPolylines').textContent =
+          unid ? (unid === 'mm' ? 'em mm' : 'sem escala') : '—';
+        const cotas = res.headers.get('X-Cotas');
+        document.querySelector('#result p').textContent = unid === 'mm'
+          ? 'Pronto — em milímetros, pelas cotas ' + cotas.replace(/D(\d)/g, 'Ø$1')
+          : 'Pronto — seu desenho está vetorizado';
         document.getElementById('statSize').textContent = (resultBlob.size / 1024).toFixed(0) + ' KB';
         document.getElementById('statTime').textContent = elapsed;
 
